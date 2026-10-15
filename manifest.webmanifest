@@ -1,0 +1,31 @@
+{
+  "name": "TSOC BFR 2026",
+  "short_name": "TSOC BFR",
+  "description": "Bayer TSOC Belford Roxo — realizado versus previsto e contratos KSB1",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0B2A4A",
+  "theme_color": "#0B2A4A",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "assets/app.ico",
+      "sizes": "48x48 256x256",
+      "type": "image/x-icon",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/bayer-logo.png?v=dash32",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/bayer-logo.png?v=dash32",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

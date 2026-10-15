@@ -1,0 +1,48 @@
+TSOC BFR — setup Supabase (acesso so com e-mail autorizado)
+==========================================================
+
+1) Crie o projeto
+   https://supabase.com → New project
+   Anote: Project URL e anon public key
+   (Settings → API)
+
+2) Cole no arquivo js/supabase-config.js
+   enabled: true
+   url: 'https://SEU-PROJETO.supabase.co'
+   anonKey: 'eyJ...'
+
+3) Rode o SQL
+   Supabase → SQL Editor → New query
+   Cole TODO o conteudo de: supabase/schema.sql
+   Ajuste os e-mails do INSERT para o time real (@bayer.com)
+   Run
+
+4) Auth URLs
+   Authentication → URL Configuration
+   Site URL: https://vt-bayer.github.io/tsoc-bfr-web/
+   Redirect URLs:
+     https://vt-bayer.github.io/tsoc-bfr-web/**
+     http://localhost:8080/**
+
+5) E-mail Auth
+   Authentication → Providers → Email → Enabled
+   (Magic link / OTP)
+
+6) Incluir / remover pessoas
+   Table Editor → authorized_emails
+   email | nome | is_admin
+   So quem estiver nesta tabela entra no app.
+
+7) Publicar o site de novo
+   powershell -ExecutionPolicy Bypass -File .\publicar-web.ps1
+
+8) Teste
+   Abra https://vt-bayer.github.io/tsoc-bfr-web/
+   Digite um e-mail autorizado → abra o link do e-mail
+
+
+Notas
+-----
+- is_admin = true → libera tambem a aba Administrador apos o login.
+- Sem URL/chave no supabase-config.js, o app local continua sem gate Supabase.
+- Nunca coloque a service_role key no front-end.

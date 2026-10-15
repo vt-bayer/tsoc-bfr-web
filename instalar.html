@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instalar TSOC BFR 2026</title>
+  <meta name="theme-color" content="#00314e">
+  <meta name="application-name" content="TSOC BFR 2026">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash30">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #00314e;
+      --green: #56d500;
+      --capri: #01beff;
+      --paper: #eef2f5;
+      --ink: #0f2433;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Open Sans", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 0%, rgba(1, 190, 255, 0.18), transparent),
+        radial-gradient(ellipse 60% 40% at 90% 100%, rgba(86, 213, 0, 0.12), transparent),
+        var(--paper);
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+    }
+    .card {
+      width: min(440px, 100%);
+      background: #fff;
+      border: 1px solid #d5dee6;
+      border-radius: 18px;
+      padding: 1.75rem 1.5rem 1.5rem;
+      box-shadow: 0 12px 40px rgba(15, 36, 51, 0.08);
+      text-align: center;
+    }
+    img { width: 72px; height: 72px; object-fit: contain; }
+    h1 {
+      font-family: Montserrat, sans-serif;
+      font-size: 1.45rem;
+      color: var(--blue);
+      margin: 0.85rem 0 0.35rem;
+    }
+    p { margin: 0.35rem 0; color: #5a6f7d; line-height: 1.45; font-size: 0.95rem; }
+    .actions { display: grid; gap: 0.65rem; margin-top: 1.25rem; }
+    button, a.btn {
+      appearance: none;
+      border: 0;
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      font: 700 0.95rem Montserrat, sans-serif;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+    }
+    #btn-install {
+      background: var(--blue);
+      color: #fff;
+    }
+    #btn-install:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .btn-open {
+      background: #e6f8ff;
+      color: var(--blue);
+      border: 1px solid rgba(1, 190, 255, 0.45);
+    }
+    .hint {
+      margin-top: 1rem;
+      font-size: 0.82rem;
+      color: #5a6f7d;
+    }
+    .ok { color: #0b6e4f; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img src="assets/bayer-logo.png?v=dash30" width="72" height="72" alt="Bayer">
+    <h1>TSOC BFR 2026</h1>
+    <p>Belford Roxo · LATAM</p>
+    <p>Instale o app no seu notebook (Chrome ou Edge). Depois ele abre como um programa.</p>
+    <div class="actions">
+      <button type="button" id="btn-install" disabled>Instalar app</button>
+      <a class="btn btn-open" href="./index.html">Abrir sem instalar</a>
+    </div>
+    <p class="hint" id="hint">Se o botão estiver cinza, use o menu do Chrome/Edge → <strong>Instalar TSOC BFR…</strong> ou <strong>Castificar página</strong>.</p>
+  </main>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+
+    let deferred;
+    const btn = document.getElementById('btn-install');
+    const hint = document.getElementById('hint');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferred = e;
+      btn.disabled = false;
+      hint.textContent = 'Clique em Instalar app — leva poucos segundos.';
+    });
+
+    btn.addEventListener('click', async () => {
+      if (!deferred) return;
+      deferred.prompt();
+      const choice = await deferred.userChoice;
+      deferred = null;
+      btn.disabled = true;
+      if (choice.outcome === 'accepted') {
+        hint.innerHTML = '<span class="ok">Instalado. Abra pelo ícone TSOC BFR no menu Iniciar.</span>';
+      } else {
+        hint.textContent = 'Instalação cancelada. Você pode abrir sem instalar.';
+        btn.disabled = false;
+      }
+    });
+
+    window.addEventListener('appinstalled', () => {
+      hint.innerHTML = '<span class="ok">Pronto! App instalado neste notebook.</span>';
+      btn.disabled = true;
+    });
+
+    // Já em modo app
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      hint.innerHTML = '<span class="ok">Você já está no app instalado.</span>';
+      location.replace('./index.html');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+TSOC BFR 2026 — como usar (bem simples)
+========================================
+
+1) Abra o link do OneDrive/Teams que o Vitor mandar.
+2) Entre na pasta completa:  tsoc-bfr-custos
+   (tem que ver instalar.bat, instalar.ps1, index.html, js, css juntos)
+3) Espere o OneDrive sincronizar (icone verde / nuvem ok).
+4) Clique duas vezes em:  instalar.bat
+5) Abra pelo atalho:  TSOC BFR 2026
+
+NÃO rode instalar.bat solto em Downloads.
+NÃO abra só o index.html.
+Não precisa de GitHub.
+
+Se der erro "instalar.ps1 nao existe":
+- Voce esta fora da pasta do app. Abra tsoc-bfr-custos e rode de la.
+
+
+Para ver dados novos:
+- Feche o app, espere o OneDrive sincronizar e abra de novo o atalho.
+
+
+Para o Vitor / admin publicar dados
+----------------------------------
+1) Abrir o app, entrar no Admin, enviar Relatorio/KSB1 e atualizar.
+2) Clicar em "3. Publicar para o time".
+3) Mover o arquivo baixado "shared-pack.json" para:
+      data\shared-pack.json
+4) Esperar o OneDrive sincronizar.
+5) Avisar o time para abrir o atalho de novo.

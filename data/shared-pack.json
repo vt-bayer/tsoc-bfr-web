@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "publishedAt": null,
+  "publishedBy": "",
+  "preferredYear": 2026,
+  "ksb1Months": [],
+  "forecasts": [],
+  "active": null,
+  "summary": {
+    "ksb1Months": 0,
+    "ksb1Rows": 0,
+    "forecastSlots": 0,
+    "forecastRows": 0,
+    "note": "Ainda sem publicação. No Admin, clique em Publicar para o time."
+  }
+}

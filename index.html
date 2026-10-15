@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TSOC BFR 2026</title>
+  <meta name="description" content="TSOC BFR 2026 — realizado versus previsto dos centros de custo, com identidade Bayer.">
+  <meta name="theme-color" content="#0B2A4A">
+  <meta name="application-name" content="TSOC BFR 2026">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/app.ico" sizes="any">
+  <link rel="icon" type="image/png" href="assets/bayer-logo.png?v=dash37">
+  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash37">
+  <link rel="shortcut icon" href="assets/app.ico">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=dash37">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js?v=dash37"></script>
+  <script src="js/supabase-auth.js?v=dash37"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegação">
+      <div class="sidebar-brand">
+        <img class="bayer-logo" src="assets/bayer-logo.png?v=dash37" width="40" height="40" alt="Bayer">
+        <div class="brand-text">
+          <p class="brand-name">Bayer</p>
+          <p class="brand-product">TSOC BFR 2026</p>
+          <p class="brand-site">Belford Roxo · LATAM</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Navegação principal">
+        <p class="sidebar-section-label">Visão</p>
+        <button type="button" class="nav-btn is-active" data-tab="inicio">
+          <span class="nav-ico" aria-hidden="true">◈</span>
+          Resumo executivo
+        </button>
+        <button type="button" class="nav-btn" data-tab="detalhes">
+          <span class="nav-ico" aria-hidden="true">▣</span>
+          Detalhes & ranking
+        </button>
+        <button type="button" class="nav-btn" data-tab="dax">
+          <span class="nav-ico" aria-hidden="true">{ }</span>
+          DAX / regras
+        </button>
+        <button type="button" class="nav-btn" data-tab="contratos">
+          <span class="nav-ico" aria-hidden="true">◫</span>
+          Contratos
+        </button>
+        <p class="sidebar-section-label">Gestão</p>
+        <button type="button" class="nav-btn" data-tab="admin">
+          <span class="nav-ico" aria-hidden="true">⚙</span>
+          Administrador
+        </button>
+        <button type="button" class="nav-btn nav-btn-logout" id="btn-sidebar-logout" hidden aria-label="Sair do administrador">
+          <span class="nav-ico" aria-hidden="true">⎋</span>
+          Sair
+        </button>
+      </nav>
+
+      <div class="sidebar-legend">
+        <p class="sidebar-section-label">Legenda</p>
+        <ul>
+          <li><span class="dot dot-real"></span> Real (planilha)</li>
+          <li><span class="dot dot-plan"></span> Previsto (cenário)</li>
+          <li><span class="dot dot-gap"></span> Diferença / risco</li>
+        </ul>
+      </div>
+
+      <div class="sidebar-meta">
+        <span class="chip" id="chip-fonte">Carregando dados…</span>
+        <span class="chip chip-user" id="chip-admin-user" hidden></span>
+      </div>
+    </aside>
+
+    <div class="main-column">
+    <main id="conteudo">
+      <!-- INÍCIO / RESUMO EXECUTIVO -->
+      <section id="tab-inicio" class="tab-panel is-active" aria-labelledby="titulo-inicio">
+        <div class="dash-page-head">
+          <div>
+            <p class="dash-kicker">Bayer · TSOC</p>
+            <h1 id="titulo-inicio">Resumo executivo</h1>
+            <p class="page-sub">
+              Realizado versus Budget / FC1–FC3 — visão rápida da operação TSOC.
+            </p>
+          </div>
+            <div class="dash-head-actions">
+            <button type="button" class="pill-btn is-active" data-goto="inicio">Resumo</button>
+            <button type="button" class="pill-btn" data-goto="detalhes">Detalhes</button>
+            <button type="button" class="pill-btn" data-goto="dax">DAX</button>
+            <button type="button" class="pill-btn" data-goto="contratos">Contratos</button>
+            <button type="button" class="pill-btn" data-goto="admin">Admin</button>
+          </div>
+        </div>
+
+        <div class="hero-snapshot entry-snapshot kpi-grid-dash" id="inicio-snapshot">
+          <article class="dash-kpi accent-blue">
+            <div class="dash-kpi-top">
+              <span class="kpi-label">Unidades</span>
+              <span class="tag tag-real">REAL</span>
+            </div>
+            <strong id="snap-unidades">—</strong>
+            <span class="kpi-hint">Base Relatorio</span>
+          </article>
+          <article class="dash-kpi accent-blue">
+            <div class="dash-kpi-top">
+              <span class="kpi-label">Centros de custo</span>
+              <span class="tag tag-real">REAL</span>
+            </div>
+            <strong id="snap-ccs">—</strong>
+            <span class="kpi-hint">Com gasto no período</span>
+          </article>
+          <article class="dash-kpi accent-green">
+            <div class="dash-kpi-top">
+              <span class="kpi-label">Realizado YTD</span>
+              <span class="tag tag-real">REAL</span>
+            </div>
+            <strong id="snap-realizado">—</strong>
+            <span class="kpi-hint">Acumulado até agosto · k</span>
+          </article>
+          <article class="dash-kpi accent-orange">
+            <div class="dash-kpi-top">
+              <span class="kpi-label">vs FC2</span>
+              <span class="tag tag-gap">GAP</span>
+            </div>
+            <strong id="snap-diff" class="diff">—</strong>
+            <span class="kpi-hint">Realizado − previsto</span>
+          </article>
+        </div>
+
+        <section class="dash-card overview-chart-card" aria-label="Evolução mês a mês do site">
+          <div class="dash-card-head">
+            <h2>Realizado × previsto por mês</h2>
+            <span class="tag tag-plan">LEITURA LIMPA</span>
+          </div>
+          <p class="detail-panel-sub" id="overview-chart-hint">Barras do site até o mês do filtro · FC2 · acumulado YTD nos KPIs acima.</p>
+          <div class="chart-pane overview-chart-pane">
+            <div class="chart-wrap chart-wrap-overview"><canvas id="chart-overview"></canvas></div>
+          </div>
+          <p class="table-footnote">k = milhares · Meses sem ACT não entram como economia falsa · Abra Detalhes para filtrar por unidade/setor.</p>
+        </section>
+
+        <div class="dash-split">
+          <section class="dash-card">
+            <div class="dash-card-head">
+              <h2>Como usar</h2>
+              <span class="tag tag-plan">GUIA</span>
+            </div>
+            <ol class="guide-steps">
+              <li><strong>Filtre</strong> unidade, setor, cenário e mês em Detalhes.</li>
+              <li><strong>Leia os KPIs</strong> antes de abrir o ranking.</li>
+              <li><strong>Priorize</strong> os maiores desvios no ranking.</li>
+              <li><strong>Abra o detalhe</strong> de um centro para evolução mês a mês.</li>
+            </ol>
+            <div class="hero-actions" style="margin-top:1rem">
+              <button type="button" class="btn btn-primary" data-goto="detalhes">Abrir detalhes</button>
+              <button type="button" class="btn btn-ghost" data-goto="admin">Atualizar Relatorio</button>
+            </div>
+          </section>
+          <section class="dash-card">
+            <div class="dash-card-head">
+              <h2>Fonte dos números</h2>
+              <span class="tag tag-real">PLANILHA</span>
+            </div>
+            <p class="dash-card-text">
+              Os valores vêm da aba <strong>Relatorio</strong> do Excel (incluindo linhas ocultas).
+              Um único upload no Admin atualiza o ano atual e os PY anteriores.
+            </p>
+            <ul class="dash-source-list">
+              <li><span class="dot dot-real"></span> ACT / PY = realizado</li>
+              <li><span class="dot dot-plan"></span> BUD / FC1–FC3 = previsto</li>
+              <li><span class="dot dot-gap"></span> Diferença = realizado − previsto</li>
+            </ul>
+          </section>
+        </div>
+      </section>
+
+      <!-- DAX / REGRAS -->
+      <section id="tab-dax" class="tab-panel" aria-labelledby="titulo-dax" hidden>
+        <div class="dash-page-head">
+          <div>
+            <p class="dash-kicker">Documentação</p>
+            <h1 id="titulo-dax">DAX / pseudocódigo</h1>
+            <p class="page-sub">Regras de negócio do TSOC BFR — espelho do motor do app, no formato Power BI.</p>
+          </div>
+          <div class="dash-head-actions">
+            <span class="tag tag-plan">IMPLEMENTAÇÃO POWER BI</span>
+          </div>
+        </div>
+
+        <div class="dax-stack">
+          <article class="dax-block">
+            <h2>Realizado (ACT / PY)</h2>
+<pre><code>Realizado =
+-- Relatorio: coluna ACT no ano corrente; PY no ano histórico
+CALCULATE(
+    SUM( Relatorio[valor_k] ),
+    Relatorio[serie] = IF( [AnoSelecionado] = [AnoCorrente], "ACT", "PY" ),
+    Relatorio[mes] IN [MesesAteFiltro]
+)</code></pre>
+          </article>
+
+          <article class="dax-block">
+            <h2>Previsto (cenário)</h2>
+<pre><code>Previsto =
+-- Cenário: Budget / FC1 / FC2 / FC3 (ou PY do ano anterior no modo YoY)
+VAR cenario = SELECTEDVALUE( Filtros[cenario], "FC2" )
+RETURN
+CALCULATE(
+    SUM( Relatorio[valor_k] ),
+    Relatorio[serie] = cenario,
+    Relatorio[mes] IN [MesesAteFiltro]
+)</code></pre>
+          </article>
+
+          <article class="dax-block">
+            <h2>Diferença e situação</h2>
+<pre><code>Diferença = [Realizado] - [Previsto]
+
+Situação =
+VAR pct = DIVIDE( ABS( [Diferença] ), ABS( [Previsto] ) )
+RETURN
+SWITCH(
+    TRUE(),
+    pct &lt; 0.01, "Dentro do previsto",
+    [Diferença] &gt; 0, "Acima do previsto",
+    "Economia"
+)</code></pre>
+          </article>
+
+          <article class="dax-block">
+            <h2>Período (mês vs YTD)</h2>
+<pre><code>MesesAteFiltro =
+VAR mes = SELECTEDVALUE( Filtros[mes], "ago" )
+VAR modo = SELECTEDVALUE( Filtros[periodo], "ytd" )
+RETURN
+IF(
+    modo = "mes",
+    { mes },
+    FILTER( VALUES( Calendario[mes] ), Calendario[ordem] &lt;= LOOKUPVALUE( Calendario[ordem], Calendario[mes], mes ) )
+)</code></pre>
+          </article>
+
+          <article class="dax-block">
+            <h2>Sem ACT ≠ economia</h2>
+<pre><code>DiferençaMensal =
+-- Meses sem realizado não geram "economia" falsa no gráfico
+VAR real = [RealizadoMes]
+VAR prev = [PrevistoMes]
+RETURN
+IF( ABS( real ) &lt; 0.5 &amp;&amp; ABS( prev ) &gt;= 0.5, BLANK(), real - prev )</code></pre>
+          </article>
+
+          <article class="dax-block">
+            <h2>Filtro sem custos de pessoas</h2>
+<pre><code>EscopoArea =
+-- Preferência do usuário (Personalizar filtros)
+CALCULATE(
+    [Diferença],
+    NOT Relatorio[tipo_de_conta] IN {
+        "Benefícios", "Custos com Pessoal", "Encargos",
+        "Estágio", "Hora extra", "Indenização",
+        "Salários", "STI - PLR", "Temporários"
+    }
+)</code></pre>
+          </article>
+        </div>
+      </section>
+
+      <!-- DETALHES -->
+      <section id="tab-detalhes" class="tab-panel" aria-labelledby="titulo-detalhes" hidden>
+        <div class="dash-page-head">
+          <div>
+            <p class="dash-kicker">Análise operacional</p>
+            <h1 id="titulo-detalhes">Detalhes & ranking</h1>
+            <p class="page-sub">
+              Ano <strong id="label-ano">2026</strong> · Valores em milhares (k) · Realizado versus cenário selecionado
+            </p>
+          </div>
+          <div class="page-actions dash-head-actions">
+            <label class="field field-inline">
+              <span>Histórico</span>
+              <select id="filtro-historico">
+                <option value="">Mês atual (em edição)</option>
+              </select>
+            </label>
+            <button type="button" class="btn btn-ghost" id="btn-salvar-historico">Salvar mês</button>
+            <button type="button" class="btn btn-ghost" id="btn-limpar-filtros">Limpar filtros</button>
+            <button type="button" class="btn btn-secondary" id="btn-export-csv">Exportar CSV</button>
+          </div>
+        </div>
+
+        <p class="py-year-banner" id="py-year-banner" hidden role="status"></p>
+
+        <div class="filters sticky-filters" id="filtros" role="search" aria-label="Filtros de análise">
+          <div class="filters-toolbar">
+            <p class="filters-toolbar-hint" id="filter-prefs-hint">Personalize os filtros da sua área (ex.: Sustentabilidade sem custos de pessoas).</p>
+            <div class="filters-toolbar-actions">
+              <span class="filter-prefs-chip" id="filter-prefs-chip" hidden></span>
+              <div class="filter-prefs">
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-filter-prefs" aria-expanded="false" aria-controls="filter-prefs-panel">
+                  Personalizar filtros
+                </button>
+                <div class="filter-prefs-panel" id="filter-prefs-panel" hidden role="dialog" aria-label="Personalizar filtros da área">
+                  <p class="filter-prefs-title">Campos visíveis</p>
+                  <div class="filter-prefs-checks" id="filter-prefs-fields">
+                    <label><input type="checkbox" data-pref-field="unidade" checked> Unidade</label>
+                    <label><input type="checkbox" data-pref-field="setor" checked> Setor</label>
+                    <label><input type="checkbox" data-pref-field="categoria" checked> Categoria</label>
+                    <label><input type="checkbox" data-pref-field="busca" checked> Busca</label>
+                  </div>
+                  <p class="filter-prefs-title">Escopo da área</p>
+                  <label class="filter-prefs-toggle">
+                    <input type="checkbox" id="pref-hide-pessoas">
+                    <span>Ocultar custos de pessoas <small>(salários, benefícios, encargos, estágio…)</small></span>
+                  </label>
+                  <p class="filter-prefs-title">Categorias que quero ver <small>(vazio = todas as permitidas)</small></p>
+                  <div class="filter-prefs-tipos" id="filter-prefs-tipos"></div>
+                  <div class="filter-prefs-footer">
+                    <button type="button" class="btn btn-ghost btn-sm" id="btn-filter-prefs-reset">Restaurar padrão</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-filter-prefs-apply">Aplicar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <label class="field" data-filter-field="ano">
+            <span>Ano</span>
+            <select id="filtro-ano" aria-label="Ano da análise">
+              <option value="2026">2026</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="unidade">
+            <span>Unidade</span>
+            <select id="filtro-unidade">
+              <option value="">Todas</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="setor">
+            <span>Setor</span>
+            <select id="filtro-setor" disabled>
+              <option value="">Todos</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="cenario">
+            <span>Comparar com</span>
+            <select id="filtro-cenario">
+              <option value="budget">Budget</option>
+              <option value="fc1">FC1</option>
+              <option value="fc2" selected>FC2</option>
+              <option value="fc3">FC3</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="periodo">
+            <span>Período</span>
+            <select id="filtro-periodo">
+              <option value="mes">Mês selecionado</option>
+              <option value="ytd" selected>Acumulado até o mês</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="mes">
+            <span>Mês</span>
+            <select id="filtro-mes">
+              <option value="jan">Janeiro</option>
+              <option value="fev">Fevereiro</option>
+              <option value="mar">Março</option>
+              <option value="abr">Abril</option>
+              <option value="mai">Maio</option>
+              <option value="jun">Junho</option>
+              <option value="jul">Julho</option>
+              <option value="ago" selected>Agosto</option>
+              <option value="set">Setembro</option>
+              <option value="out">Outubro</option>
+              <option value="nov">Novembro</option>
+              <option value="dez">Dezembro</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="categoria">
+            <span>Categoria</span>
+            <select id="filtro-categoria">
+              <option value="">Todas</option>
+            </select>
+          </label>
+          <label class="field field-grow" data-filter-field="busca">
+            <span>Buscar centro de custo</span>
+            <input type="search" id="filtro-busca" placeholder="Código ou nome, ex.: MW09C20003" autocomplete="off">
+          </label>
+        </div>
+
+        <p class="nl-summary" id="resumo-frase" aria-live="polite"></p>
+
+        <div class="kpi-grid kpi-grid-dash" id="kpi-grid">
+          <article class="dash-kpi accent-blue">
+            <div class="dash-kpi-top">
+              <span class="kpi-label">Centros de custo</span>
+              <span class="tag tag-real">REAL</span>
+            </div>
+            <strong class="kpi-value" id="kpi-ccs">0</strong>
+            <span class="kpi-hint">No recorte filtrado</span>
+          </article>
+          <article class="dash-kpi accent-green">
+            <div class="dash-kpi-top">
+              <span class="kpi-label">Realizado</span>
+              <span class="tag tag-real">REAL</span>
+            </div>
+            <strong class="kpi-value" id="kpi-realizado">0 k</strong>
+            <span class="kpi-hint">ACT / PY da planilha</span>
+          </article>
+          <article class="dash-kpi accent-capri">
+            <div class="dash-kpi-top">
+              <span class="kpi-label">Previsto</span>
+              <span class="tag tag-plan">CENÁRIO</span>
+            </div>
+            <strong class="kpi-value" id="kpi-previsto">0 k</strong>
+            <span class="kpi-hint">Budget ou FC selecionado</span>
+          </article>
+          <article class="dash-kpi accent-orange">
+            <div class="dash-kpi-top">
+              <span class="kpi-label">Diferença</span>
+              <span class="tag tag-gap">GAP</span>
+            </div>
+            <strong class="kpi-value" id="kpi-diff">0 k</strong>
+            <span class="kpi-hint" id="kpi-diff-hint"></span>
+          </article>
+          <article class="dash-kpi accent-red">
+            <div class="dash-kpi-top">
+              <span class="kpi-label">Acima do previsto</span>
+              <span class="tag tag-gap">RISCO</span>
+            </div>
+            <strong class="kpi-value" id="kpi-acima">0</strong>
+            <span class="kpi-hint">Centros em estouro</span>
+          </article>
+        </div>
+
+        <section class="download-panel" aria-labelledby="titulo-download-detalhes">
+          <div>
+            <h2 id="titulo-download-detalhes">Download da aba Detalhes</h2>
+            <p>Exporte o recorte filtrado para conferência no Excel.</p>
+          </div>
+          <div class="download-actions">
+            <button type="button" class="btn btn-secondary" id="btn-download-detalhes-csv">Baixar CSV filtrado</button>
+            <button type="button" class="btn btn-ghost" id="btn-download-detalhes-xlsx">Baixar Excel (.xlsx)</button>
+          </div>
+        </section>
+
+        <div class="details-layout details-layout-single">
+          <section class="panel" aria-labelledby="titulo-ranking">
+            <div class="panel-head">
+              <h2 id="titulo-ranking">Ranking de centros de custo</h2>
+              <p>Maiores desvios primeiro. Clique em um centro para abrir a visão completa em tela cheia.</p>
+            </div>
+            <div class="table-wrap table-wrap-tall">
+              <table class="data-table" id="tabela-ranking">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Centro de custo</th>
+                    <th>Unidade</th>
+                    <th>Setor</th>
+                    <th class="num">Realizado</th>
+                    <th class="num">Previsto</th>
+                    <th class="num">Diferença</th>
+                    <th aria-label="Abrir detalhe"></th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-ranking"></tbody>
+              </table>
+            </div>
+            <div class="panel-foot">
+              <button type="button" class="btn btn-ghost" id="btn-ver-todos">Ver todos</button>
+              <p class="table-footnote">Valores em milhares (k) · Ano <span id="label-ano-footer">2026</span></p>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- CONTRATOS (KSB1) -->
+      <section id="tab-contratos" class="tab-panel" aria-labelledby="titulo-contratos" hidden>
+        <div class="dash-page-head">
+          <div>
+            <p class="dash-kicker">Compras &amp; serviços</p>
+            <h1 id="titulo-contratos">Contratos</h1>
+            <p class="page-sub">
+              Acompanhe gap, atraso e compensação dos contratos monitorados.
+              O envio da KSB1 fica na aba <strong>Administrador</strong>.
+            </p>
+          </div>
+        </div>
+
+        <section class="dash-card contratos-upload-card" aria-labelledby="titulo-ksb1-guia">
+          <div class="dash-card-head">
+            <h2 id="titulo-ksb1-guia">Contratos monitorados</h2>
+            <span class="tag tag-plan">KSB1 site</span>
+          </div>
+          <ul class="guide-steps contratos-catalog">
+            <li><strong>Site Logistic</strong> — FIMATEC · Primary Logistic (GT Soluções)</li>
+            <li><strong>Infraestrutura</strong> — Alsco Toalheira · Sodexo · Tursan</li>
+            <li><strong>Segurança Industrial</strong> — SEGURPRO · Arprotec · G4S · GSS · CM Couto</li>
+            <li><strong>Saúde Ocupacional</strong> — Base Sustentabilidade · Milaneli / SSO · GAP (SSMA / segurança do trabalho)</li>
+          </ul>
+          <p class="detail-panel-sub">
+            Para atualizar: <strong>Administrador</strong> → enviar KSB1 → Atualizar contratos.
+            A coluna <strong>Period</strong> define o mês.
+          </p>
+          <p class="contratos-status" id="ksb1-status" role="status">Nenhum arquivo KSB1 no histórico deste navegador.</p>
+          <p class="contratos-pending" id="ksb1-pending" hidden role="status"></p>
+          <div class="ksb1-history" id="ksb1-history" hidden>
+            <p class="ksb1-history-label">Meses gravados neste navegador</p>
+            <ul class="ksb1-history-list" id="ksb1-history-list"></ul>
+          </div>
+        </section>
+
+        <div class="kpi-grid kpi-grid-dash contratos-kpis" id="contratos-kpis" hidden>
+          <article class="dash-kpi accent-orange is-clickable" id="kpi-ksb1-gap" title="Ver gap por mês">
+            <div class="dash-kpi-top"><span class="kpi-label">Gap</span><span class="tag tag-gap">FALTA</span></div>
+            <strong class="kpi-value" id="ksb1-kpi-gap">0</strong>
+            <span class="kpi-hint" id="ksb1-kpi-gap-var">Variação vs mês anterior</span>
+          </article>
+          <article class="dash-kpi accent-blue">
+            <div class="dash-kpi-top"><span class="kpi-label">Compensados</span><span class="tag tag-real">OK</span></div>
+            <strong class="kpi-value" id="ksb1-kpi-compensados">0</strong>
+            <span class="kpi-hint">Faltou e caiu depois</span>
+          </article>
+          <article class="dash-kpi accent-green">
+            <div class="dash-kpi-top"><span class="kpi-label">Valor (visão)</span><span class="tag tag-real">BRL</span></div>
+            <strong class="kpi-value" id="ksb1-kpi-total">0,00</strong>
+            <span class="kpi-hint" id="ksb1-kpi-total-hint">Soma do recorte atual</span>
+          </article>
+        </div>
+
+        <section class="dash-card ksb1-month-gap-card" id="ksb1-month-gaps" hidden aria-labelledby="titulo-ksb1-month-gaps">
+          <div class="dash-card-head">
+            <h2 id="titulo-ksb1-month-gaps">Gap por mês</h2>
+            <span class="tag tag-gap">MÊS A MÊS</span>
+          </div>
+          <p class="detail-panel-sub">Quantos contratos faltaram em cada mês e o valor típico estimado em falta. Clique no mês para ver os contratos.</p>
+          <div class="ksb1-month-gap-strip" id="ksb1-month-gap-strip"></div>
+          <div class="ksb1-month-gap-detail" id="ksb1-month-gap-detail" hidden></div>
+        </section>
+
+        <section class="dash-card contratos-gap-card" id="contratos-gap-card" hidden aria-labelledby="titulo-ksb1-gap">
+          <div class="dash-card-head">
+            <h2 id="titulo-ksb1-gap">Gap, atraso e compensação</h2>
+            <span class="tag tag-gap">MAPA DE CALOR</span>
+          </div>
+          <p class="detail-panel-sub" id="ksb1-gap-hint">Compara os meses do histórico: o que faltou, o que caiu depois e o que segue em atraso. Clique no contrato para abrir a linha do tempo.</p>
+          <div class="ksb1-heatmap-toolbar">
+            <div class="ksb1-heatmap-legend">
+              <span><i class="ksb1-hm-swatch falta" aria-hidden="true"></i> Falta (F)</span>
+              <span><i class="ksb1-hm-swatch compensou" aria-hidden="true"></i> Compensou (C)</span>
+              <span><i class="ksb1-hm-swatch normal" aria-hidden="true"></i> Normal</span>
+              <span>Em atraso = falta no último mês</span>
+            </div>
+            <div class="ksb1-gap-filter" id="ksb1-gap-filter" role="group" aria-label="Filtrar por situação">
+              <button type="button" class="ksb1-gap-filter-btn is-active" data-ksb1-gap-filter="all">Todos</button>
+              <button type="button" class="ksb1-gap-filter-btn" data-ksb1-gap-filter="falta">Falta</button>
+              <button type="button" class="ksb1-gap-filter-btn" data-ksb1-gap-filter="compensado">Compensado</button>
+              <button type="button" class="ksb1-gap-filter-btn" data-ksb1-gap-filter="normal">Lançamentos</button>
+            </div>
+          </div>
+          <div class="table-wrap ksb1-heatmap-wrap">
+            <table class="data-table data-table-compact ksb1-heatmap" id="table-ksb1-gap">
+              <thead id="thead-ksb1-gap">
+                <tr>
+                  <th>Contrato</th>
+                  <th>Situação</th>
+                  <th>Leitura</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-ksb1-gap"></tbody>
+            </table>
+          </div>
+          <p class="table-footnote" id="ksb1-gap-footnote">
+            Falta = mês sem valor relevante · Compensou = mês seguinte (ou posterior) com valor alto · Em atraso = falta no último mês do histórico
+          </p>
+        </section>
+
+        <div class="filters sticky-filters contratos-filters" id="filtros-contratos" hidden>
+          <label class="field">
+            <span>Mês (histórico)</span>
+            <select id="filtro-ksb1-mes"><option value="all">Todos os meses</option></select>
+          </label>
+          <label class="field">
+            <span>Área</span>
+            <select id="filtro-ksb1-area"><option value="">Todas</option></select>
+          </label>
+          <label class="field">
+            <span>Contrato</span>
+            <select id="filtro-ksb1-contrato"><option value="">Todos</option></select>
+          </label>
+          <label class="field">
+            <span>Centro de custo</span>
+            <select id="filtro-ksb1-cc"><option value="">Todos</option></select>
+          </label>
+          <label class="field">
+            <span>Fornecedor</span>
+            <input type="search" id="filtro-ksb1-fornecedor" placeholder="Nome ou código" autocomplete="off">
+          </label>
+          <label class="field field-grow">
+            <span>Buscar</span>
+            <input type="search" id="filtro-ksb1-busca" placeholder="Conta, pedido, texto…" autocomplete="off">
+          </label>
+          <div class="field field-actions">
+            <span>&nbsp;</span>
+            <button type="button" class="btn btn-ghost" id="btn-limpar-filtros-ksb1">Limpar filtros</button>
+          </div>
+        </div>
+
+        <div class="contratos-grid" id="contratos-grid" hidden>
+          <section class="dash-card">
+            <div class="dash-card-head">
+              <h2>Contratos por valor</h2>
+              <span class="tag tag-gap">ÁREA</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table data-table-compact">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Contrato</th>
+                    <th>Área</th>
+                    <th class="num">Linhas</th>
+                    <th class="num">Pedidos</th>
+                    <th class="num">Valor</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-ksb1-fornecedores"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="dash-card">
+            <div class="dash-card-head">
+              <h2>Lançamentos</h2>
+              <span class="tag tag-real">DETALHE</span>
+            </div>
+            <div class="table-wrap detail-table-fill contratos-lancamentos">
+              <table class="data-table data-table-compact">
+                <thead>
+                  <tr>
+                    <th>Contrato</th>
+                    <th>CC</th>
+                    <th>Fornecedor</th>
+                    <th class="num">Valor</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-ksb1-lancamentos"></tbody>
+              </table>
+            </div>
+            <p class="table-footnote" id="ksb1-footnote">Valores em BRL (Val.in rep.cur.) · Exibindo até 200 linhas</p>
+          </section>
+        </div>
+      </section>
+
+      <!-- ADMIN -->
+      <section id="tab-admin" class="tab-panel" aria-labelledby="titulo-admin" hidden>
+        <div class="dash-page-head">
+          <div>
+            <p class="dash-kicker">Gestão</p>
+            <h1 id="titulo-admin">Administrador</h1>
+            <p class="page-sub">Acesso restrito por CWID Bayer. Atualize o app exportando só a aba Relatorio.</p>
+          </div>
+          <div class="page-actions dash-head-actions" id="admin-session-actions" hidden>
+            <button type="button" class="btn btn-ghost" id="btn-admin-logout">Sair</button>
+          </div>
+        </div>
+
+        <!-- Gate de matrícula -->
+        <div class="auth-gate" id="admin-gate">
+          <img class="auth-logo" src="assets/bayer-logo.png?v=dash37" width="72" height="72" alt="Bayer">
+          <h2>Entrada do administrador</h2>
+          <p>Acesso restrito aos CWIDs autorizados: <strong>CBAIS</strong>, <strong>GPGMS</strong> e <strong>GPUST</strong>.</p>
+          <form id="form-admin-login" class="auth-form" autocomplete="on">
+            <label class="field">
+              <span>CWID ou e-mail autorizado</span>
+              <input type="text" id="input-cwid" name="cwid" placeholder="Ex.: CBAIS ou nome.sobrenome@bayer.com" required maxlength="80" autocomplete="username" spellcheck="false">
+            </label>
+            <button type="submit" class="btn btn-primary">Entrar</button>
+          </form>
+          <p class="auth-error" id="auth-error" hidden role="alert"></p>
+          <p class="auth-hint">Vitor (CBAIS) · Francielle (GPGMS) · Pamela (GPUST). Outros usuários não entram no Admin.</p>
+        </div>
+
+        <div id="admin-workspace" hidden>
+          <div class="admin-intro">
+            <p>
+              <strong>Para atualizar o app:</strong> no Excel, exporte / salve só a aba
+              <strong>Relatorio</strong> (ou o arquivo inteiro, desde que essa aba exista) e envie abaixo.
+              Não precisa desocultar linhas nem colunas — o app lê tudo e já separa Budget, FC1–FC3, ACT e PY dos anos anteriores.
+            </p>
+          </div>
+
+          <section class="upload-guide" aria-labelledby="titulo-layout-upload">
+            <h2 id="titulo-layout-upload">Como atualizar (1 passo)</h2>
+            <ol class="upload-steps">
+              <li>Abra a planilha TSOC BFR e vá na aba <strong>Relatorio</strong>.</li>
+              <li>Exporte essa aba (ou salve o .xlsx com ela) — filtro/ocultas podem ficar como estão.</li>
+              <li>Envie o arquivo no cartão abaixo. Pronto.</li>
+            </ol>
+            <p class="guide-note">
+              Demais abas (Overview, FAM, Ações…) <strong>não são necessárias</strong> para o Relatorio.
+              O KSB1 mensal do site (ex.: Belford Roxo_Set) entra no cartão <strong>Contratos (KSB1)</strong> abaixo.
+            </p>
+          </section>
+
+          <div class="upload-grid" id="upload-grid">
+            <article class="upload-card upload-card-relatorio is-primary" data-slot="relatorio">
+              <h2>Relatorio (TSOC)</h2>
+              <p class="upload-card-sub">Atualiza realizado × previsto do site.</p>
+              <label class="field">
+                <span>Ano preferido (se a planilha tiver mais de um)</span>
+                <select data-upload-year id="upload-year-relatorio" aria-label="Ano preferido do Relatorio"></select>
+              </label>
+              <ul class="upload-year-list" data-year-list id="relatorio-year-list"></ul>
+              <input type="file" accept=".xlsx,.xls,.csv" id="file-relatorio" hidden>
+              <div class="upload-actions">
+                <button type="button" class="btn btn-secondary" data-upload="relatorio" id="btn-upload-relatorio">
+                  1. Enviar aba Relatorio
+                </button>
+                <button type="button" class="btn btn-primary" id="btn-atualizar-app" disabled title="Aplica a planilha enviada nas telas do app">
+                  2. Atualizar app
+                </button>
+                <button type="button" class="btn btn-ghost" id="btn-restaurar-seed">Restaurar dados iniciais</button>
+              </div>
+              <p class="admin-msg" id="admin-msg" role="status">Envie o Relatorio e depois clique em Atualizar app.</p>
+            </article>
+
+            <article class="upload-card upload-card-ksb1 is-primary" data-slot="ksb1" id="upload-card-ksb1">
+              <h2>Contratos (KSB1)</h2>
+              <p class="upload-card-sub">KSB1 mensal do site — mesmo fluxo do Relatorio.</p>
+              <ul class="upload-year-list" data-ksb1-list id="ksb1-admin-list"></ul>
+              <input type="file" accept=".xlsx,.xls,.csv" id="file-ksb1" hidden multiple>
+              <div class="upload-actions">
+                <button type="button" class="btn btn-secondary" id="btn-upload-ksb1">
+                  1. Enviar KSB1 do site
+                </button>
+                <button type="button" class="btn btn-primary" id="btn-atualizar-ksb1" disabled title="Grava o mês enviado no histórico">
+                  2. Atualizar contratos
+                </button>
+                <button type="button" class="btn btn-ghost" id="btn-limpar-ksb1" hidden>Cancelar envio</button>
+              </div>
+              <p class="admin-msg" id="ksb1-admin-msg" role="status">Envie a KSB1 e depois clique em Atualizar contratos.</p>
+              <p class="contratos-pending" id="ksb1-pending-admin" hidden role="status"></p>
+            </article>
+          </div>
+
+          <section class="dash-card shared-publish-card" aria-labelledby="titulo-shared-publish">
+            <div class="dash-card-head">
+              <h2 id="titulo-shared-publish">Publicar para o time</h2>
+              <span class="tag tag-plan">GITHUB</span>
+            </div>
+            <p class="detail-panel-sub">
+              Depois de atualizar Relatorio e contratos no seu notebook, publique a base.
+              O arquivo vai para o GitHub; as outras pessoas fazem <strong>Pull</strong> e passam a ver os mesmos números.
+            </p>
+            <ol class="upload-steps">
+              <li>Clique em <strong>3. Publicar para o time</strong> (baixa <code>shared-pack.json</code>).</li>
+              <li>Substitua o arquivo em <code>data/shared-pack.json</code> na pasta do app.</li>
+              <li>No GitHub Desktop: <strong>Commit → Push</strong>.</li>
+              <li>O time: <strong>Fetch/Pull</strong> e abre o app de novo (ou F5).</li>
+            </ol>
+            <div class="upload-actions">
+              <button type="button" class="btn btn-primary" id="btn-publish-shared">3. Publicar para o time</button>
+              <label class="btn btn-ghost" for="file-import-shared">Importar pack baixado</label>
+              <input type="file" accept=".json,application/json" id="file-import-shared" hidden>
+            </div>
+            <p class="admin-msg" id="shared-publish-msg" role="status">Nenhuma publicação ainda neste navegador.</p>
+          </section>
+
+          <section class="admin-auth-manage" aria-labelledby="titulo-cwids">
+            <h2 id="titulo-cwids">Pessoas autorizadas</h2>
+            <p>
+              Como administradora(o), você pode <strong>incluir</strong> CWIDs com acesso ao Admin
+              e <strong>excluir</strong> quem foi liberado (ou suspender quem está na lista base).
+            </p>
+            <form id="form-add-cwid" class="auth-form people-form">
+              <label class="field">
+                <span>CWID Bayer</span>
+                <input type="text" id="input-novo-cwid" placeholder="Ex.: ABC1234" maxlength="20" spellcheck="false" required>
+              </label>
+              <label class="field">
+                <span>Nome (opcional)</span>
+                <input type="text" id="input-novo-nome" placeholder="Ex.: Maria Silva" maxlength="80" spellcheck="false">
+              </label>
+              <button type="submit" class="btn btn-secondary" id="btn-incluir-pessoa">Incluir pessoa</button>
+            </form>
+            <div class="people-table-wrap">
+              <table class="data-table people-table" aria-label="Lista de pessoas autorizadas">
+                <thead>
+                  <tr>
+                    <th>CWID</th>
+                    <th>Nome</th>
+                    <th>Situação</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="lista-cwids"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Bayer · TSOC BFR 2026 · Valores em milhares (k)</p>
+    </footer>
+    </div>
+  </div>
+
+  <!-- Tela cheia do centro de custo -->
+  <section class="detail-screen" id="detail-screen" hidden aria-labelledby="drawer-title">
+    <header class="detail-screen-head">
+      <div class="detail-screen-head-inner">
+        <button type="button" class="btn btn-ghost" id="btn-fechar-drawer">← Voltar ao ranking</button>
+        <div class="detail-screen-titles">
+          <p class="dash-kicker detail-kicker">Centro de custo · visão completa</p>
+          <h2 id="drawer-title">Centro de custo</h2>
+          <p id="drawer-meta" class="drawer-meta"></p>
+        </div>
+        <div class="detail-head-tags" id="drawer-tags" aria-hidden="true"></div>
+      </div>
+    </header>
+    <div class="detail-screen-body" id="drawer-body"></div>
+  </section>
+
+  <div class="toast" id="toast" hidden role="status"></div>
+
+  <!-- Copilot / ajudante do app -->
+  <button type="button" class="copilot-fab" id="btn-copilot-toggle" aria-expanded="false" aria-controls="copilot-panel" aria-label="Abrir ajudante">
+    <span class="copilot-fab-icon" aria-hidden="true">✦</span>
+    <span class="copilot-fab-label">Ajudante</span>
+  </button>
+
+  <section class="copilot-panel" id="copilot-panel" hidden aria-label="Ajudante TSOC BFR">
+    <header class="copilot-head">
+      <div>
+        <p class="copilot-kicker">Bayer · Ajudante do app</p>
+        <h2>Copilot BFR</h2>
+      </div>
+      <button type="button" class="icon-btn copilot-close" id="btn-copilot-close" aria-label="Fechar ajudante">×</button>
+    </header>
+    <div class="copilot-messages" id="copilot-messages" role="log" aria-live="polite"></div>
+    <div class="copilot-suggestions" id="copilot-suggestions">
+      <button type="button" data-q="O que tem neste app?">O que tem no app</button>
+      <button type="button" data-q="Como filtrar?">Como filtrar</button>
+      <button type="button" data-q="O que faz a aba Contratos?">Aba Contratos</button>
+      <button type="button" data-q="Qual o resumo atual?">Resumo atual</button>
+      <button type="button" data-q="Quais centros estão acima do previsto?">Acima do previsto</button>
+      <button type="button" data-q="O que significa FC2?">O que é FC2</button>
+    </div>
+    <form class="copilot-form" id="copilot-form">
+      <label class="sr-only" for="copilot-input">Pergunta ao ajudante</label>
+      <input type="text" id="copilot-input" placeholder="Pergunte sobre o app ou os dados da tela…" autocomplete="off">
+      <button type="submit" class="btn btn-primary">Enviar</button>
+    </form>
+  </section>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+  </script>
+  <script src="js/storage.js?v=dash37"></script>
+  <script src="js/auth.js?v=dash37"></script>
+  <script src="js/parser.js?v=dash37"></script>
+  <script src="js/engine.js?v=dash37"></script>
+  <script src="js/ksb1.js?v=dash37"></script>
+  <script src="js/shared.js?v=dash37"></script>
+  <script src="js/actions.js?v=dash37"></script>
+  <script src="js/copilot.js?v=dash37"></script>
+  <script src="js/ui.js?v=dash37"></script>
+  <script src="js/app.js?v=dash37"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "descricao": "Somente estes CWIDs acessam a aba Administrador",
+  "cwids": [
+    {
+      "cwid": "CBAIS",
+      "nome": "Vitor Pinheiro",
+      "email": "vitor.pinheiro@bayer.com"
+    },
+    {
+      "cwid": "GPGMS",
+      "nome": "Francielle Capella",
+      "email": "francielle.capella@bayer.com"
+    },
+    {
+      "cwid": "GPUST",
+      "nome": "Pamela Bagantini",
+      "email": "pamela.bagantini@bayer.com"
+    }
+  ]
+}

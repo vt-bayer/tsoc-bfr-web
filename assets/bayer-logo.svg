@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Bayer">
+  <rect width="120" height="120" rx="18" fill="#56D500"/>
+  <!-- Cruz Bayer -->
+  <path fill="#003C1E" d="M52 18h16v28h28v16H68v28H52V62H24V46h28V18z"/>
+  <path fill="#fff" d="M54 22h12v26h26v12H66v26H54V60H28V48h26V22z"/>
+</svg>

@@ -170,6 +170,44 @@ const Engine = (() => {
     });
   }
 
+  /** Consolida centros de custo em linhas de setor (unidade + setor). */
+  function aggregateSectors(ccList) {
+    const map = new Map();
+    (ccList || []).forEach((cc) => {
+      const key = `${cc.unidade || ''}||${cc.setor || ''}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          level: 'setor',
+          unidade: cc.unidade,
+          setor: cc.setor,
+          cc: cc.setor,
+          ccNome: '',
+          realizado: 0,
+          previsto: 0,
+          diff: 0,
+          accounts: [],
+          ccCodes: [],
+          ccCount: 0
+        });
+      }
+      const s = map.get(key);
+      s.realizado += Number(cc.realizado) || 0;
+      s.previsto += Number(cc.previsto) || 0;
+      s.diff += Number(cc.diff) || 0;
+      s.ccCount += 1;
+      if (cc.cc) s.ccCodes.push(cc.cc);
+      if (Array.isArray(cc.accounts) && cc.accounts.length) {
+        s.accounts.push(...cc.accounts);
+      }
+    });
+    return Array.from(map.values()).map((s) => ({
+      ...s,
+      ccCodes: [...new Set(s.ccCodes.filter(Boolean))],
+      ccNome: `${s.ccCount} centro${s.ccCount === 1 ? '' : 's'} de custo`,
+      situacao: classify(s.diff, s.previsto)
+    }));
+  }
+
   function buildUnitTree(ccList) {
     const units = new Map();
     ccList.forEach((cc) => {
@@ -259,6 +297,7 @@ const Engine = (() => {
       const previsto = sumMonths(plannedOf(a, filters.scenario), months);
       const diff = realizado - previsto;
       return {
+        cc: a.cc || '',
         conta: a.conta,
         contaDesc: a.contaDesc || a.tipo,
         tipo: a.tipo,
@@ -310,14 +349,18 @@ const Engine = (() => {
     const drivers = top.length
       ? top.join(', ').replace(/, ([^,]*)$/, ' e $1')
       : 'várias contas contábeis';
+    const isSetor = ccDetail.level === 'setor';
+    const subject = isSetor
+      ? `O setor ${ccDetail.setor || ''}`
+      : 'O centro de custo';
 
     if (ccDetail.diff > 0) {
-      return `O centro de custo ficou ${abs} acima do previsto no ${scenario}, puxado principalmente por ${drivers}.`;
+      return `${subject} ficou ${abs} acima do previsto no ${scenario}, puxado principalmente por ${drivers}.`;
     }
     if (ccDetail.diff < 0) {
-      return `O centro de custo ficou ${abs} abaixo do previsto no ${scenario}, principalmente por menores gastos nas contas de ${drivers}.`;
+      return `${subject} ficou ${abs} abaixo do previsto no ${scenario}, principalmente por menores gastos nas contas de ${drivers}.`;
     }
-    return `O centro de custo ficou alinhado ao previsto no ${scenario} no período selecionado.`;
+    return `${subject} ficou alinhado ao previsto no ${scenario} no período selecionado.`;
   }
 
   function monthlyFromRows(rows, filters) {
@@ -355,6 +398,107 @@ const Engine = (() => {
   function siteMonthlySeries(rows, filters) {
     const filtered = filterRows(rows, filters);
     return monthlyFromRows(filtered, filters);
+  }
+
+  /** Grupos do waterfall executivo (ordem = Power BI TSOC). */
+  const WATERFALL_GROUP_ORDER = [
+    'pessoas', 'energia', 'fam', 'others', 'it', 'logistics', 'waste', 'deprec', 'quality'
+  ];
+  const WATERFALL_GROUP_LABELS = {
+    pessoas: 'Pessoas',
+    energia: 'Energia',
+    fam: 'FAM',
+    others: 'Others',
+    it: 'IT',
+    logistics: 'Logistics',
+    waste: 'Waste',
+    deprec: 'Deprec.',
+    quality: 'Quality'
+  };
+
+  function waterfallGroupId(tipo) {
+    const t = String(tipo || '').trim();
+    if (TIPOS_PESSOAS.has(t)) return 'pessoas';
+    if (/energia/i.test(t)) return 'energia';
+    if (/^fam$/i.test(t)) return 'fam';
+    if (/^(it\b|cpd)/i.test(t) || /it suprimentos/i.test(t)) return 'it';
+    if (/log[ií]stica/i.test(t)) return 'logistics';
+    if (/meio ambiente/i.test(t)) return 'waste';
+    if (/deprec/i.test(t)) return 'deprec';
+    if (/an[aá]lises|qualidade|treinamentos/i.test(t)) return 'quality';
+    return 'others';
+  }
+
+  /**
+   * Waterfall Previsto → contribuições por grupo → Realizado.
+   * GAP = realizado − previsto (economia negativa).
+   */
+  function waterfallByGroup(rows, filters) {
+    const filtered = filterRows(rows, filters);
+    const months = activeMonths(filters);
+    const buckets = Object.fromEntries(
+      WATERFALL_GROUP_ORDER.map((id) => [id, { realizado: 0, previsto: 0 }])
+    );
+    let realizado = 0;
+    let previsto = 0;
+    filtered.forEach((r) => {
+      const act = sumMonths(r.act, months);
+      const plan = sumMonths(plannedOf(r, filters.scenario), months);
+      realizado += act;
+      previsto += plan;
+      const id = waterfallGroupId(r.tipo);
+      buckets[id].realizado += act;
+      buckets[id].previsto += plan;
+    });
+
+    const gap = realizado - previsto;
+    const gapPct = Math.abs(previsto) > 0.5 ? (gap / Math.abs(previsto)) * 100 : 0;
+    const startLabel = filters.periodo === 'mes' ? 'TSOC Mês' : 'TSOC YTD';
+    const steps = [];
+    let running = previsto;
+    steps.push({
+      label: startLabel,
+      kind: 'total',
+      value: previsto,
+      from: 0,
+      to: previsto
+    });
+    WATERFALL_GROUP_ORDER.forEach((id) => {
+      const b = buckets[id];
+      const diff = b.realizado - b.previsto;
+      if (Math.abs(diff) < 0.05 && Math.abs(b.previsto) < 0.05 && Math.abs(b.realizado) < 0.05) {
+        return;
+      }
+      const from = running;
+      running += diff;
+      steps.push({
+        label: WATERFALL_GROUP_LABELS[id],
+        kind: 'step',
+        value: diff,
+        from,
+        to: running,
+        groupId: id
+      });
+    });
+    steps.push({
+      label: 'Total',
+      kind: 'total',
+      value: realizado,
+      from: 0,
+      to: realizado
+    });
+
+    return {
+      previsto,
+      realizado,
+      gap,
+      gapPct,
+      steps,
+      startLabel,
+      scenario: filters.scenario,
+      mes: filters.mes,
+      periodo: filters.periodo
+    };
   }
 
   function metaFromRows(rows) {
@@ -403,6 +547,7 @@ const Engine = (() => {
     getFiltersFromUi,
     filterRows,
     aggregateCostCenters,
+    aggregateSectors,
     buildUnitTree,
     sortAttention,
     summary,
@@ -412,6 +557,8 @@ const Engine = (() => {
     explainCc,
     monthlySeries,
     siteMonthlySeries,
+    waterfallByGroup,
+    WATERFALL_GROUP_LABELS,
     metaFromRows,
     formatK,
     formatPct,

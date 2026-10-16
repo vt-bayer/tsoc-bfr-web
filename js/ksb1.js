@@ -577,6 +577,60 @@ const Ksb1 = (() => {
     };
   }
 
+  const RELATORIO_MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+  function emptyRelatorioMonths() {
+    return Object.fromEntries(RELATORIO_MONTHS.map((m) => [m, 0]));
+  }
+
+  /**
+   * Agrega lançamentos KSB1 (BRL) → ACT do Relatorio (milhares k), por CC + conta + mês.
+   * Usa todas as linhas (não só contratos monitorados).
+   */
+  function aggregateRelatorioAct(rows = [], { year } = {}) {
+    const yFilter = year != null ? Number(year) : null;
+    const byKey = new Map();
+    const monthsTouched = new Set();
+    const yearsSeen = new Set();
+
+    (rows || []).forEach((r) => {
+      const y = Number(r.ano);
+      if (yFilter && y && y !== yFilter) return;
+      if (y >= 2000 && y <= 2100) yearsSeen.add(y);
+      const monthNum = Number(r.periodo);
+      if (!(monthNum >= 1 && monthNum <= 12)) return;
+      const m = RELATORIO_MONTHS[monthNum - 1];
+      const cc = normCcKey(r.cc);
+      if (!cc) return;
+      const conta = String(r.conta || '').trim();
+      const key = `${cc}||${conta}`;
+      if (!byKey.has(key)) {
+        byKey.set(key, {
+          ...emptyRelatorioMonths(),
+          cc,
+          conta,
+          ccNome: String(r.ccNome || '').trim(),
+          contaDesc: String(r.contaDesc || '').trim()
+        });
+      }
+      const bag = byKey.get(key);
+      // Relatorio trabalha em milhares (k)
+      const k = (Number(r.valor) || 0) / 1000;
+      bag[m] = Math.round((bag[m] + k) * 100) / 100;
+      monthsTouched.add(m);
+      if (r.ccNome) bag.ccNome = String(r.ccNome).trim();
+      if (r.contaDesc) bag.contaDesc = String(r.contaDesc).trim();
+    });
+
+    return {
+      year: yFilter || (yearsSeen.size === 1 ? [...yearsSeen][0] : null),
+      years: [...yearsSeen].sort((a, b) => a - b),
+      byKey,
+      monthsTouched: [...monthsTouched],
+      keyCount: byKey.size
+    };
+  }
+
   function formatMoney(value, { signed = false } = {}) {
     const abs = Math.abs(Number(value) || 0);
     const body = abs.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -598,16 +652,31 @@ const Ksb1 = (() => {
     return formatMoney(n);
   }
 
+  function normCcKey(cc) {
+    const s = String(cc || '').toUpperCase().trim();
+    const m = s.match(/MW\d+[A-Z0-9]*/);
+    return m ? m[0] : s.replace(/[^A-Z0-9]/g, '');
+  }
+
   function filterRows(rows, filters = {}) {
     const busca = String(filters.busca || '').trim().toLowerCase();
     const cc = String(filters.cc || '').trim();
+    const ccNorm = cc ? normCcKey(cc) : '';
+    const ccsSet = Array.isArray(filters.ccs) && filters.ccs.length
+      ? new Set(filters.ccs.map(normCcKey).filter(Boolean))
+      : null;
     const fornecedor = String(filters.fornecedor || '').trim().toLowerCase();
     const area = String(filters.area || '').trim();
     const contrato = String(filters.contrato || '').trim();
     return (rows || []).filter((r) => {
       if (area && r.area !== area) return false;
       if (contrato && r.contrato !== contrato) return false;
-      if (cc && r.cc !== cc) return false;
+      const rowCc = normCcKey(r.cc);
+      if (ccsSet) {
+        if (!ccsSet.has(rowCc)) return false;
+      } else if (ccNorm && rowCc !== ccNorm) {
+        return false;
+      }
       if (fornecedor) {
         const blob = `${r.fornecedor} ${r.fornecedorNome} ${r.empresa}`.toLowerCase();
         if (!blob.includes(fornecedor)) return false;
@@ -997,6 +1066,8 @@ const Ksb1 = (() => {
     inferContract,
     isMonitoredRow,
     reclassifyRows,
-    analyzeTimeline
+    analyzeTimeline,
+    aggregateRelatorioAct,
+    normCcKey
   };
 })();

@@ -6,6 +6,10 @@ const UI = (() => {
     rankingLimit: 10,
     chart: null,
     overviewChart: null,
+    waterfallMes: null,
+    waterfallYtd: null,
+    drawerDetail: null,
+    drawerFilters: null,
     chartSeries: null,
     chartFilters: null,
     chartMode: 'auto',
@@ -27,16 +31,18 @@ const UI = (() => {
     showToast._t = setTimeout(() => { el.hidden = true; }, 3200);
   }
 
-  function placeFilters(tab) {
+  function placeFilters() {
     const filtros = $('#filtros');
     if (!filtros) return;
     const hostInicio = $('#filtros-host-inicio');
-    const hostDetalhes = $('#filtros-host-detalhes');
-    if (tab === 'detalhes' && hostDetalhes) {
-      hostDetalhes.appendChild(filtros);
-    } else if (hostInicio) {
-      hostInicio.appendChild(filtros);
-    }
+    if (!hostInicio) return;
+    // Filtros + personalizar ficam só no Resumo (Detalhes usa os mesmos valores)
+    if (filtros.parentElement !== hostInicio) hostInicio.appendChild(filtros);
+    filtros.classList.add('filters-exec-stack');
+    const shortLbl = filtros.querySelector('.field-label-short');
+    const fullLbl = filtros.querySelector('.field-label-full');
+    if (shortLbl) shortLbl.hidden = false;
+    if (fullLbl) fullLbl.hidden = true;
   }
 
   function setTab(tab) {
@@ -52,7 +58,7 @@ const UI = (() => {
       panel.hidden = !active;
     });
     document.body.dataset.tab = tab;
-    placeFilters(tab);
+    placeFilters();
     if (tab === 'admin' && typeof window.onAdminTabShow === 'function') {
       window.onAdminTabShow();
     }
@@ -536,9 +542,13 @@ const UI = (() => {
     return tr;
   }
 
-  function renderRanking(ccList, { showAll } = {}) {
+  function renderRanking(list, { showAll } = {}) {
     const tbody = $('#tbody-ranking');
-    const sorted = Engine.sortAttention(ccList);
+    // Ranking por setor consolidado (não por centro de custo)
+    const sectorList = (list || []).some((x) => x.level === 'setor')
+      ? list
+      : Engine.aggregateSectors(list);
+    const sorted = Engine.sortAttention(sectorList);
     const limit = showAll || state.rankingLimit >= sorted.length ? sorted.length : state.rankingLimit;
     const maxAbs = Math.max(...sorted.map((c) => Math.abs(c.diff)), 1);
     tbody.innerHTML = '';
@@ -549,21 +559,21 @@ const UI = (() => {
       return;
     }
 
-    sorted.slice(0, limit).forEach((cc, i) => {
+    sorted.slice(0, limit).forEach((s, i) => {
       const tr = document.createElement('tr');
       tr.className = 'rank-row';
-      tr.dataset.cc = cc.cc;
-      tr.dataset.unidade = cc.unidade;
-      tr.dataset.setor = cc.setor;
+      tr.dataset.level = 'setor';
+      tr.dataset.unidade = s.unidade;
+      tr.dataset.setor = s.setor;
       tr.innerHTML = `
         <td>${i + 1}</td>
-        <td><strong>${escapeHtml(cc.cc)}</strong><div style="color:var(--ink-muted);font-size:0.8rem">${escapeHtml(cc.ccNome || '')}</div></td>
-        <td>${escapeHtml(cc.unidade)}</td>
-        <td>${escapeHtml(cc.setor)}</td>
-        <td class="num">${Engine.formatK(cc.realizado)}</td>
-        <td class="num">${Engine.formatK(cc.previsto)}</td>
-        <td>${deviationBar(cc.diff, maxAbs)}</td>
-        <td><button type="button" class="btn btn-ghost btn-sm btn-rank-open" data-open-cc="${cc.cc}" data-unidade="${escapeHtml(cc.unidade)}" data-setor="${escapeHtml(cc.setor)}" aria-label="Abrir detalhe de ${escapeHtml(cc.cc)}">→</button></td>
+        <td><strong>${escapeHtml(s.setor || '—')}</strong><div class="rank-sub">${escapeHtml(s.ccNome || '')}</div></td>
+        <td>${escapeHtml(s.unidade || '—')}</td>
+        <td class="num">${s.ccCount || '—'}</td>
+        <td class="num">${Engine.formatK(s.realizado)}</td>
+        <td class="num">${Engine.formatK(s.previsto)}</td>
+        <td>${deviationBar(s.diff, maxAbs)}</td>
+        <td><button type="button" class="btn btn-ghost btn-sm btn-rank-open" data-open-setor="1" data-unidade="${escapeHtml(s.unidade)}" data-setor="${escapeHtml(s.setor)}" aria-label="Abrir consolidado do setor ${escapeHtml(s.setor)}">→</button></td>
       `;
       tbody.appendChild(tr);
     });
@@ -577,22 +587,128 @@ const UI = (() => {
     }
   }
 
+  function normCcKey(cc) {
+    const s = String(cc || '').toUpperCase().trim();
+    const m = s.match(/MW\d+[A-Z0-9]*/);
+    return m ? m[0] : s.replace(/[^A-Z0-9]/g, '');
+  }
+
+  function detailCostCenters(ccDetail) {
+    const bag = [];
+    if (Array.isArray(ccDetail?.ccCodes)) bag.push(...ccDetail.ccCodes);
+    if (ccDetail?.level === 'setor') {
+      (ccDetail.accounts || []).forEach((a) => bag.push(a.cc));
+    } else if (ccDetail?.cc && ccDetail.level !== 'setor') {
+      bag.push(ccDetail.cc);
+    }
+    return [...new Set(bag.map(normCcKey).filter(Boolean))];
+  }
+
+  function lineNatureza(row) {
+    return String(row.natureza || row.tipo || row.contaDesc || row.conta || '').trim() || '(sem natureza)';
+  }
+
+  function parseKsb1Periodo(raw) {
+    const s = String(raw ?? '').trim();
+    if (!s) return null;
+    const n = Number(s);
+    if (Number.isFinite(n) && n >= 1 && n <= 12) return Math.round(n);
+    const m = s.match(/(^|[^\d])(1[0-2]|0?[1-9])([^\d]|$)/);
+    if (m) return Number(m[2]);
+    return null;
+  }
+
+  /** Linhas do detalhe: só KSB1 (sem fallback Relatorio). */
+  function detailAccountLines(ccDetail, filters, natureza = '') {
+    const ccs = new Set(detailCostCenters(ccDetail));
+    const app = typeof window !== 'undefined' ? window.App : null;
+    const ksb1Source = (app?.ksb1HistoryRows?.length)
+      ? app.ksb1HistoryRows
+      : (app?.ksb1Rows || []);
+
+    const mesIdx = Engine.MONTHS.indexOf(filters?.mes || 'ago');
+    const mesNum = mesIdx >= 0 ? mesIdx + 1 : null;
+    const allowedMonths = filters?.periodo === 'mes'
+      ? new Set(mesNum != null ? [mesNum] : [])
+      : new Set(mesNum != null ? Engine.MONTHS.slice(0, mesIdx + 1).map((_, i) => i + 1) : []);
+
+    let ksb1Rows = [];
+    if (ksb1Source.length && ccs.size) {
+      ksb1Rows = ksb1Source.filter((r) => ccs.has(normCcKey(r.cc)));
+      if (allowedMonths.size) {
+        const byPeriod = ksb1Rows.filter((r) => {
+          const p = parseKsb1Periodo(r.periodo);
+          return p != null && allowedMonths.has(p);
+        });
+        // Se o filtro de mês zerar tudo, mantém as linhas do CC (melhor que vazio)
+        if (byPeriod.length) ksb1Rows = byPeriod;
+      }
+    }
+
+    let rows = ksb1Rows.map((r) => ({
+      source: 'ksb1',
+      natureza: lineNatureza(r),
+      conta: r.conta || '',
+      cc: r.cc || '',
+      fornecedor: r.fornecedorNome || r.fornecedor || '',
+      pedido: r.pedido || r.documento || '',
+      periodo: r.periodo || '',
+      valor: Number(r.valor) || 0,
+      realizado: Number(r.valor) || 0,
+      previsto: null,
+      diff: null
+    }));
+    const naturezas = [...new Set(rows.map((r) => r.natureza))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    if (natureza) rows = rows.filter((r) => r.natureza === natureza);
+    rows.sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
+    const total = rows.reduce((s, r) => s + r.valor, 0);
+    return { rows, naturezas, total, source: 'ksb1' };
+  }
+
+  function buildDetailLinesHtml(pack) {
+    const moneyKsb1 = (typeof Ksb1 !== 'undefined' && Ksb1.formatMoney)
+      ? (v) => Ksb1.formatMoney(v)
+      : (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const slice = (pack.rows || []).slice(0, 200);
+    if (!slice.length) {
+      return '<tr><td colspan="7" class="empty-state">Sem linhas KSB1 para estes centros. Envie o extrato no Admin → Atualizar app (KSB1).</td></tr>';
+    }
+    return slice.map((r) => `
+      <tr>
+        <td>${escapeHtml(r.natureza)}</td>
+        <td>${escapeHtml(r.conta || '—')}</td>
+        <td>${escapeHtml(r.cc || '—')}</td>
+        <td>${escapeHtml(r.fornecedor || '—')}</td>
+        <td>${escapeHtml(r.pedido || '—')}</td>
+        <td>${escapeHtml(String(r.periodo || '—'))}</td>
+        <td class="num">${moneyKsb1(r.valor)}</td>
+      </tr>
+    `).join('');
+  }
+
   function openDrawer(ccDetail, filters) {
     const accounts = Engine.accountImpact(ccDetail, filters);
-    const comments = Engine.commentsByTipo(ccDetail, filters);
     const series = Engine.monthlySeries(ccDetail, filters);
     const scenarioLabel = Engine.SCENARIO_LABELS[filters.scenario];
     const year = document.getElementById('label-ano')?.textContent || '2026';
+    const linesPack = detailAccountLines(ccDetail, filters, '');
+    state.drawerDetail = ccDetail;
+    state.drawerFilters = filters;
 
     const situacaoTag = ccDetail.situacao.key === 'estouro'
       ? 'tag-gap'
       : ccDetail.situacao.key === 'economia'
         ? 'tag-real'
         : 'tag-plan';
+    const isSetor = ccDetail.level === 'setor';
     setDrawerChrome({
-      kicker: 'Centro de custo · visão completa',
-      title: `${ccDetail.cc} — ${ccDetail.ccNome || 'Centro de custo'}`,
-      meta: `${ccDetail.unidade} · ${ccDetail.setor} · Ano ${year}`,
+      kicker: isSetor ? 'Setor · consolidado' : 'Centro de custo · visão completa',
+      title: isSetor
+        ? `${ccDetail.setor || 'Setor'}`
+        : `${ccDetail.cc} — ${ccDetail.ccNome || 'Centro de custo'}`,
+      meta: isSetor
+        ? `${ccDetail.unidade} · ${ccDetail.ccNome || ''} · Ano ${year}`
+        : `${ccDetail.unidade} · ${ccDetail.setor} · Ano ${year}`,
       backLabel: '← Voltar ao ranking',
       tagsHtml: `
         <span class="tag tag-real">REAL</span>
@@ -601,29 +717,17 @@ const UI = (() => {
       `
     });
 
-    const commentsHtml = comments.length
-      ? comments.slice(0, 30).map((c) => `
-          <tr>
-            <td>${escapeHtml(c.tipo)}</td>
-            <td>${escapeHtml(c.comentario)}</td>
-            <td class="num">${Engine.formatK(c.previsto)}</td>
-            <td class="num">${Engine.formatK(c.realizado)}</td>
-            <td class="num ${diffClass(c.situacao.key)}">${Engine.formatK(c.diff, { signed: true })}</td>
-          </tr>
-        `).join('')
-      : '<tr><td colspan="5" class="empty-state">Não há comentário cadastrado (Analise N2 / Relatorio) para este centro e período.</td></tr>';
-
-    const accountsHtml = accounts.slice(0, 12).map((a) => `
-      <tr>
-        <td>${escapeHtml(a.tipo || '—')}</td>
-        <td>${escapeHtml(a.comentario || '—')}</td>
-        <td>${escapeHtml(a.conta)}</td>
-        <td>${escapeHtml(a.contaDesc)}</td>
-        <td class="num">${Engine.formatK(a.previsto)}</td>
-        <td class="num">${Engine.formatK(a.realizado)}</td>
-        <td class="num ${diffClass(a.situacao.key)}">${Engine.formatK(a.diff, { signed: true })}</td>
-      </tr>
-    `).join('');
+    const naturezaOptions = [
+      '<option value="">Todas as naturezas</option>',
+      ...linesPack.naturezas.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`)
+    ].join('');
+    const linesHtml = buildDetailLinesHtml(linesPack);
+    const linesCountLabel = linesPack.rows.length > 200
+      ? `Exibindo 200 de ${linesPack.rows.length.toLocaleString('pt-BR')} linhas (KSB1)`
+      : `${linesPack.rows.length.toLocaleString('pt-BR')} linha(s) (KSB1)`;
+    const linesTotalLabel = typeof Ksb1 !== 'undefined' && Ksb1.formatMoney
+      ? Ksb1.formatMoney(linesPack.total)
+      : Engine.formatK(linesPack.total);
 
     const monthTable = series.map((m) => {
       const noAct = !m.hasAct;
@@ -723,53 +827,40 @@ const UI = (() => {
         <p class="table-footnote">Unidade: milhares (k) · Gráfico até o mês do filtro · Meses sem realizado ficam fora da diferença</p>
       </section>
 
-      <div class="detail-grid-2">
-        <section class="dash-card detail-panel">
-          <div class="dash-card-head">
-            <h2>Tipo de conta × Comentário</h2>
-            <span class="tag tag-plan">N2</span>
+      <section class="dash-card detail-panel detail-ksb1-panel">
+        <div class="dash-card-head detail-ksb1-head">
+          <div>
+            <div class="dash-card-head" style="margin-bottom:0.15rem">
+              <h2>Contas contábeis</h2>
+              <span class="tag tag-gap">LINHAS</span>
+            </div>
+            <p class="detail-panel-sub">Linhas diretas da KSB1 · filtre pela natureza do gasto</p>
           </div>
-          <p class="detail-panel-sub">Comentários do Relatorio / Analise N2.</p>
-          <div class="table-wrap detail-table-fill">
-            <table class="data-table data-table-compact">
-              <thead>
-                <tr>
-                  <th>Tipo de conta</th>
-                  <th>Comentário</th>
-                  <th class="num">Previsto</th>
-                  <th class="num">Realizado</th>
-                  <th class="num">Diferença</th>
-                </tr>
-              </thead>
-              <tbody>${commentsHtml}</tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="dash-card detail-panel">
-          <div class="dash-card-head">
-            <h2>Contas contábeis</h2>
-            <span class="tag tag-gap">IMPACTO</span>
-          </div>
-          <div class="table-wrap detail-table-fill">
-            <table class="data-table data-table-compact">
-              <thead>
-                <tr>
-                  <th>Tipo</th>
-                  <th>Comentário</th>
-                  <th>Conta</th>
-                  <th>Descrição</th>
-                  <th class="num">Previsto</th>
-                  <th class="num">Realizado</th>
-                  <th class="num">Diferença</th>
-                </tr>
-              </thead>
-              <tbody>${accountsHtml || '<tr><td colspan="7" class="empty-state">Sem contas no período.</td></tr>'}</tbody>
-            </table>
-          </div>
-          <p class="table-footnote">Ordenado pelo maior impacto absoluto · Valores em milhares (k)</p>
-        </section>
-      </div>
+          <label class="field field-inline detail-natureza-filter">
+            <span>Natureza do gasto</span>
+            <select id="filtro-natureza-detail" aria-label="Filtrar natureza do gasto">
+              ${naturezaOptions}
+            </select>
+          </label>
+        </div>
+        <div class="table-wrap detail-table-fill">
+          <table class="data-table data-table-compact" id="tabela-contas-detail">
+            <thead>
+              <tr>
+                <th>Natureza</th>
+                <th>Conta</th>
+                <th>Centro</th>
+                <th>Fornecedor</th>
+                <th>Pedido / Doc.</th>
+                <th>Período</th>
+                <th class="num">Valor</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-contas-detail">${linesHtml}</tbody>
+          </table>
+        </div>
+        <p class="table-footnote" id="contas-detail-footnote">${escapeHtml(linesCountLabel)} · Total ${escapeHtml(linesTotalLabel)}</p>
+      </section>
     `;
 
     const screen = $('#detail-screen');
@@ -777,6 +868,25 @@ const UI = (() => {
     document.body.classList.add('detail-open');
     const bodyEl = $('#drawer-body');
     if (bodyEl) bodyEl.scrollTop = 0;
+
+    const natSel = $('#filtro-natureza-detail');
+    if (natSel) {
+      natSel.onchange = () => {
+        const pack = detailAccountLines(state.drawerDetail, state.drawerFilters || filters, natSel.value || '');
+        const tbody = $('#tbody-contas-detail');
+        const foot = $('#contas-detail-footnote');
+        if (tbody) tbody.innerHTML = buildDetailLinesHtml(pack);
+        if (foot) {
+          const countLabel = pack.rows.length > 200
+            ? `Exibindo 200 de ${pack.rows.length.toLocaleString('pt-BR')} linhas (KSB1)`
+            : `${pack.rows.length.toLocaleString('pt-BR')} linha(s) (KSB1)`;
+          const totalLabel = typeof Ksb1 !== 'undefined' && Ksb1.formatMoney
+            ? Ksb1.formatMoney(pack.total)
+            : Engine.formatK(pack.total);
+          foot.textContent = `${countLabel} · Total ${totalLabel}`;
+        }
+      };
+    }
 
     state.chartSeries = series;
     state.chartFilters = filters;
@@ -1207,64 +1317,169 @@ const UI = (() => {
     state.chart = new Chart(canvas, config);
   }
 
-  function renderOverviewChart(series, filters = {}) {
-    const canvas = $('#chart-overview');
-    if (!canvas || typeof Chart === 'undefined') return;
-    if (state.overviewChart) {
-      state.overviewChart.destroy();
-      state.overviewChart = null;
-    }
-    const cutoff = Engine.MONTHS.indexOf(filters?.mes || 'ago');
-    const lastIdx = cutoff >= 0 ? cutoff : (series?.length || 1) - 1;
-    const slice = (series || []).filter((_, i) => i <= lastIdx);
-    if (!slice.length) return;
+  function formatGapBadge(gap, gapPct) {
+    const signed = Engine.formatK(gap, { signed: true }).replace(' k', '');
+    const pct = `${Math.abs(gapPct).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}%`;
+    return `GAP ${signed}  ${pct}`;
+  }
 
-    const hint = $('#overview-chart-hint');
-    const mesLabel = Engine.MONTH_LABELS[filters?.mes] || filters?.mes || '';
-    const scen = Engine.SCENARIO_LABELS[filters?.scenario] || filters?.scenario || 'FC2';
-    if (hint) {
-      const parts = [`Barras até ${mesLabel}`, scen];
-      if (filters.unidade) parts.push(filters.unidade);
-      if (filters.setor) parts.push(filters.setor);
-      hint.textContent = `${parts.join(' · ')} · Realizado (ACT/PY) versus previsto.`;
+  /** Valor compacto nas barras do waterfall (sem sufixo k). */
+  function formatWaterfallBarValue(value, { signed = false } = {}) {
+    const n = Number(value) || 0;
+    const abs = Math.abs(n);
+    let body;
+    if (abs >= 100) body = abs.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+    else if (abs >= 10) body = abs.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+    else body = abs.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+    if (!signed) return n < 0 ? `−${body}` : body;
+    if (n > 0) return `+${body}`;
+    if (n < 0) return `−${body}`;
+    return body;
+  }
+
+  function renderWaterfallChart(canvasId, stateKey, data) {
+    const canvas = $(`#${canvasId}`);
+    if (!canvas || typeof Chart === 'undefined' || !data?.steps?.length) return;
+    if (state[stateKey]) {
+      state[stateKey].destroy();
+      state[stateKey] = null;
     }
 
-    state.overviewChart = new Chart(canvas, {
+    const steps = data.steps;
+    const labels = steps.map((s) => s.label);
+    const pad = [];
+    const vals = [];
+    const colors = [];
+
+    steps.forEach((s) => {
+      if (s.kind === 'total') {
+        pad.push(0);
+        vals.push(s.value);
+        colors.push('#7a828a');
+      } else if (s.value >= 0) {
+        pad.push(s.from);
+        vals.push(s.value);
+        colors.push('#c62828');
+      } else {
+        pad.push(s.to);
+        vals.push(Math.abs(s.value));
+        colors.push('#2e7d32');
+      }
+    });
+
+    const wfValueLabels = {
+      id: 'wfValueLabels',
+      afterDatasetsDraw(chart) {
+        const meta = chart.getDatasetMeta(1);
+        if (!meta?.data?.length) return;
+        const { ctx } = chart;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.font = '600 9px "Open Sans", system-ui, sans-serif';
+        ctx.fillStyle = '#1a1a1a';
+        meta.data.forEach((el, i) => {
+          const s = steps[i];
+          if (!s || !el) return;
+          if (s.kind === 'step' && Math.abs(s.value) < 0.5) return;
+          const text = s.kind === 'total'
+            ? formatWaterfallBarValue(s.value)
+            : formatWaterfallBarValue(s.value, { signed: true });
+          const x = el.x;
+          const y = Math.min(el.y, el.base != null ? el.base : el.y) - 3;
+          ctx.fillText(text, x, y);
+        });
+        ctx.restore();
+      }
+    };
+
+    state[stateKey] = new Chart(canvas, {
       type: 'bar',
       data: {
-        labels: slice.map((s) => s.label.slice(0, 3)),
+        labels,
         datasets: [
           {
-            label: 'Realizado',
-            data: slice.map((s) => (s.hasAct ? s.realizado : 0)),
-            backgroundColor: '#00314E',
-            borderRadius: 0,
-            maxBarThickness: 34,
-            categoryPercentage: 0.7,
-            barPercentage: 0.9
+            label: 'base',
+            data: pad,
+            backgroundColor: 'transparent',
+            borderWidth: 0,
+            stack: 'wf',
+            barPercentage: 0.92,
+            categoryPercentage: 0.95
           },
           {
-            label: 'Previsto',
-            data: slice.map((s) => s.previsto),
-            backgroundColor: '#56d500',
-            borderRadius: 0,
-            maxBarThickness: 34,
-            categoryPercentage: 0.7,
-            barPercentage: 0.9
+            label: 'valor',
+            data: vals,
+            backgroundColor: colors,
+            borderWidth: 0,
+            stack: 'wf',
+            barPercentage: 0.92,
+            categoryPercentage: 0.95
           }
         ]
       },
-      options: chartBaseOptions({
-        legendTop: true,
-        tickFn: (v) => `${Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} k`,
-        tooltipFn: (ctx) => {
-          const s = slice[ctx.dataIndex];
-          const raw = ctx.dataset.label === 'Realizado' ? s.realizado : s.previsto;
-          if (ctx.dataset.label === 'Realizado' && !s.hasAct) return 'Realizado: — (sem ACT)';
-          return `${ctx.dataset.label}: ${Engine.formatK(raw)}`;
+      plugins: [wfValueLabels],
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: {
+          padding: { top: 16, right: 4, bottom: 0, left: 2 }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label(ctx) {
+                if (ctx.datasetIndex === 0) return null;
+                const s = steps[ctx.dataIndex];
+                if (s.kind === 'total') {
+                  return s.label === 'Total'
+                    ? `Realizado: ${Engine.formatK(s.value)}`
+                    : `Previsto: ${Engine.formatK(s.value)}`;
+                }
+                return `${s.label}: ${Engine.formatK(s.value, { signed: true })}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            stacked: true,
+            grid: { display: false },
+            border: { display: false },
+            ticks: {
+              font: { size: 8, weight: '600' },
+              color: '#222',
+              maxRotation: 0,
+              minRotation: 0,
+              autoSkip: false,
+              padding: 2
+            }
+          },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            grid: { display: false },
+            border: { display: false },
+            ticks: { display: false },
+            grace: '8%'
+          }
         }
-      })
+      }
     });
+  }
+
+  function renderExecWaterfalls(mesData, ytdData) {
+    const gapMes = $('#gap-waterfall-mes');
+    const gapYtd = $('#gap-waterfall-ytd');
+    if (gapMes && mesData) gapMes.textContent = formatGapBadge(mesData.gap, mesData.gapPct);
+    if (gapYtd && ytdData) gapYtd.textContent = formatGapBadge(ytdData.gap, ytdData.gapPct);
+    renderWaterfallChart('chart-waterfall-mes', 'waterfallMes', mesData);
+    renderWaterfallChart('chart-waterfall-ytd', 'waterfallYtd', ytdData);
+  }
+
+  function renderOverviewChart() {
+    /* legado — substituído pelos waterfalls do resumo */
   }
 
   function chartBaseOptions({
@@ -2374,6 +2589,8 @@ const UI = (() => {
     renderKpis,
     renderHomeSnapshot,
     renderOverviewChart,
+    renderExecWaterfalls,
+    placeFilters,
     renderTree,
     renderRanking,
     openDrawer,

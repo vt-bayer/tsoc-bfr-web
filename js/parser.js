@@ -612,6 +612,105 @@ const Parser = (() => {
     return Array.from(byKey.values());
   }
 
+  /**
+   * Aplica ACT agregado da KSB1 nas linhas do Relatorio (só os meses tocados).
+   * actPack: retorno de Ksb1.aggregateRelatorioAct
+   */
+  function applyKsb1Act(rows = [], actPack = {}, { ccLookup = null } = {}) {
+    const monthsTouched = actPack.monthsTouched || [];
+    if (!monthsTouched.length || !actPack.byKey?.size) {
+      return { rows: rows || [], stats: { matched: 0, created: 0, months: [] } };
+    }
+
+    const cloned = (rows || []).map((r) => ({
+      ...r,
+      bud: { ...emptyMonths(), ...(r.bud || {}) },
+      fc1: { ...emptyMonths(), ...(r.fc1 || {}) },
+      fc2: { ...emptyMonths(), ...(r.fc2 || {}) },
+      fc3: { ...emptyMonths(), ...(r.fc3 || {}) },
+      act: { ...emptyMonths(), ...(r.act || {}) }
+    }));
+
+    const index = new Map();
+    cloned.forEach((r, i) => {
+      const k = `${extractCc(r.cc)}||${String(r.conta || '').trim()}`;
+      if (!index.has(k)) index.set(k, []);
+      index.get(k).push(i);
+    });
+
+    let matched = 0;
+    let created = 0;
+
+    actPack.byKey.forEach((bag, key) => {
+      const idxs = index.get(key) || [];
+      if (idxs.length) {
+        monthsTouched.forEach((m) => {
+          const total = Number(bag[m]) || 0;
+          const prev = idxs.map((i) => Number(cloned[i].act[m]) || 0);
+          const prevSum = prev.reduce((s, v) => s + v, 0);
+          if (Math.abs(prevSum) >= 0.005) {
+            idxs.forEach((i, j) => {
+              cloned[i].act[m] = Math.round(total * (prev[j] / prevSum) * 100) / 100;
+            });
+          } else {
+            cloned[idxs[0]].act[m] = total;
+            idxs.slice(1).forEach((i) => {
+              cloned[i].act[m] = 0;
+            });
+          }
+        });
+        matched += 1;
+        return;
+      }
+
+      const cc = bag.cc || String(key).split('||')[0];
+      const meta = ccLookup?.get(extractCc(cc)) || {};
+      const act = emptyMonths();
+      monthsTouched.forEach((m) => {
+        act[m] = Number(bag[m]) || 0;
+      });
+      cloned.push({
+        unidade: meta.unidade || '—',
+        setor: meta.setor || '—',
+        grupo: meta.grupo || '',
+        cc: extractCc(cc),
+        ccNome: bag.ccNome || meta.ccNome || '',
+        tipo: bag.contaDesc || 'KSB1',
+        comentario: 'Atualizado via KSB1',
+        conta: bag.conta || String(key).split('||')[1] || '',
+        contaDesc: bag.contaDesc || '',
+        year: actPack.year || undefined,
+        bud: emptyMonths(),
+        fc1: emptyMonths(),
+        fc2: emptyMonths(),
+        fc3: emptyMonths(),
+        act,
+        source: 'ksb1-act'
+      });
+      created += 1;
+    });
+
+    return {
+      rows: cloned,
+      stats: { matched, created, months: [...monthsTouched] }
+    };
+  }
+
+  function buildCcLookup(rows = []) {
+    const map = new Map();
+    (rows || []).forEach((r) => {
+      const cc = extractCc(r.cc);
+      if (!cc || map.has(cc)) return;
+      map.set(cc, {
+        unidade: r.unidade || '',
+        setor: r.setor || '',
+        grupo: r.grupo || '',
+        ccNome: r.ccNome || ''
+      });
+    });
+    return map;
+  }
+
   return {
     MONTHS,
     parseFile,
@@ -619,6 +718,9 @@ const Parser = (() => {
     emptyMonths,
     parseActionsFromWorkbook,
     parseWorkbookAllYears,
-    parseCsvAllYears
+    parseCsvAllYears,
+    applyKsb1Act,
+    buildCcLookup,
+    extractCc
   };
 })();

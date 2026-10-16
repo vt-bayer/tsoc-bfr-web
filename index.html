@@ -9,18 +9,18 @@
   <meta name="application-name" content="TSOC BFR 2026">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/app.ico" sizes="any">
-  <link rel="icon" type="image/png" href="assets/bayer-logo.png?v=dash38">
-  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash38">
+  <link rel="icon" type="image/png" href="assets/bayer-logo.png?v=dash49">
+  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash49">
   <link rel="shortcut icon" href="assets/app.ico">
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=dash38">
+  <link rel="stylesheet" href="css/styles.css?v=dash49">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-config.js?v=dash38"></script>
-  <script src="js/supabase-auth.js?v=dash38"></script>
+  <script src="js/supabase-config.js?v=dash49"></script>
+  <script src="js/supabase-auth.js?v=dash49"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 </head>
@@ -30,7 +30,7 @@
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navegação">
       <div class="sidebar-brand">
-        <img class="bayer-logo" src="assets/bayer-logo.png?v=dash38" width="40" height="40" alt="Bayer">
+        <img class="bayer-logo" src="assets/bayer-logo.png?v=dash49" width="40" height="40" alt="Bayer">
         <div class="brand-text">
           <p class="brand-name">Bayer</p>
           <p class="brand-product">TSOC BFR 2026</p>
@@ -103,6 +103,7 @@
           </div>
         </div>
 
+        <div class="exec-layout" id="exec-layout">
         <div id="filtros-host-inicio">
         <div class="filters sticky-filters filters-compact" id="filtros" role="search" aria-label="Filtros de análise">
           <div class="filters-toolbar">
@@ -156,7 +157,8 @@
             </select>
           </label>
           <label class="field" data-filter-field="cenario">
-            <span>Comparar com</span>
+            <span class="field-label-full">Comparar com</span>
+            <span class="field-label-short" hidden>Comparação</span>
             <select id="filtro-cenario">
               <option value="budget">Budget</option>
               <option value="fc1">FC1</option>
@@ -201,6 +203,28 @@
         </div>
         </div>
 
+        <div class="waterfall-grid" aria-label="Waterfalls TSOC Mês e YTD">
+          <section class="waterfall-card" aria-labelledby="titulo-waterfall-mes">
+            <div class="waterfall-card-head">
+              <h2 id="titulo-waterfall-mes">TSOC Mês</h2>
+              <div class="waterfall-gap" id="gap-waterfall-mes" title="GAP = Realizado − Previsto">GAP —</div>
+            </div>
+            <div class="chart-wrap chart-wrap-waterfall">
+              <canvas id="chart-waterfall-mes"></canvas>
+            </div>
+          </section>
+          <section class="waterfall-card" aria-labelledby="titulo-waterfall-ytd">
+            <div class="waterfall-card-head">
+              <h2 id="titulo-waterfall-ytd">TSOC YTD</h2>
+              <div class="waterfall-gap" id="gap-waterfall-ytd" title="GAP = Realizado − Previsto">GAP —</div>
+            </div>
+            <div class="chart-wrap chart-wrap-waterfall">
+              <canvas id="chart-waterfall-ytd"></canvas>
+            </div>
+          </section>
+        </div>
+        </div>
+
         <div class="hero-snapshot entry-snapshot kpi-grid-dash" id="inicio-snapshot">
           <article class="dash-kpi accent-blue">
             <div class="dash-kpi-top">
@@ -236,18 +260,6 @@
           </article>
         </div>
 
-        <section class="dash-card overview-chart-card" aria-label="Evolução mês a mês do site">
-          <div class="dash-card-head">
-            <h2>Realizado × previsto por mês</h2>
-            <span class="tag tag-plan">LEITURA LIMPA</span>
-          </div>
-          <p class="detail-panel-sub" id="overview-chart-hint">Barras até o mês do filtro · cenário e recorte dos filtros acima.</p>
-          <div class="chart-pane overview-chart-pane">
-            <div class="chart-wrap chart-wrap-overview"><canvas id="chart-overview"></canvas></div>
-          </div>
-          <p class="table-footnote">k = milhares · Meses sem ACT não entram como economia falsa · O filtro de mês corta o gráfico até o mês escolhido.</p>
-        </section>
-
         <div class="dash-split">
           <section class="dash-card">
             <div class="dash-card-head">
@@ -255,8 +267,8 @@
               <span class="tag tag-plan">GUIA</span>
             </div>
             <ol class="guide-steps">
-              <li><strong>Filtre</strong> unidade, setor, cenário e mês neste Resumo.</li>
-              <li><strong>Leia os KPIs</strong> e o gráfico (o mês altera as barras).</li>
+              <li><strong>Filtre</strong> unidade, setor, comparação e mês à esquerda.</li>
+              <li><strong>Leia os waterfalls</strong> Mês e YTD (vermelho = acima, verde = economia).</li>
               <li><strong>Abra Detalhes</strong> para o ranking com os mesmos filtros.</li>
               <li><strong>Abra o detalhe</strong> de um centro para evolução mês a mês.</li>
             </ol>
@@ -400,7 +412,6 @@ CALCULATE(
 
         <p class="py-year-banner" id="py-year-banner" hidden role="status"></p>
 
-        <div id="filtros-host-detalhes"></div>
 
         <p class="nl-summary" id="resumo-frase" aria-live="polite"></p>
 
@@ -461,21 +472,21 @@ CALCULATE(
         <div class="details-layout details-layout-single">
           <section class="panel" aria-labelledby="titulo-ranking">
             <div class="panel-head">
-              <h2 id="titulo-ranking">Ranking de centros de custo</h2>
-              <p>Maiores desvios primeiro. Clique em um centro para abrir a visão completa em tela cheia.</p>
+              <h2 id="titulo-ranking">Ranking por setor</h2>
+              <p>Maiores desvios primeiro. Clique em um setor para abrir o consolidado em tela cheia.</p>
             </div>
             <div class="table-wrap table-wrap-tall">
               <table class="data-table" id="tabela-ranking">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Centro de custo</th>
-                    <th>Unidade</th>
                     <th>Setor</th>
+                    <th>Unidade</th>
+                    <th class="num">CCs</th>
                     <th class="num">Realizado</th>
                     <th class="num">Previsto</th>
                     <th class="num">Diferença</th>
-                    <th aria-label="Abrir detalhe"></th>
+                    <th aria-label="Abrir consolidado"></th>
                   </tr>
                 </thead>
                 <tbody id="tbody-ranking"></tbody>
@@ -514,7 +525,7 @@ CALCULATE(
             <li><strong>Saúde Ocupacional</strong> — Base Sustentabilidade · Milaneli / SSO · GAP (SSMA / segurança do trabalho)</li>
           </ul>
           <p class="detail-panel-sub">
-            Para atualizar: <strong>Administrador</strong> → enviar KSB1 → Atualizar contratos.
+            Para atualizar: <strong>Administrador</strong> → enviar KSB1 → Atualizar app (KSB1). Atualiza também o ACT do Relatorio.
             A coluna <strong>Period</strong> define o mês.
           </p>
           <p class="contratos-status" id="ksb1-status" role="status">Nenhum arquivo KSB1 no histórico deste navegador.</p>
@@ -672,7 +683,7 @@ CALCULATE(
           <div>
             <p class="dash-kicker">Gestão</p>
             <h1 id="titulo-admin">Administrador</h1>
-            <p class="page-sub">Acesso restrito por CWID Bayer. Atualize o app exportando só a aba Relatorio.</p>
+            <p class="page-sub">Acesso restrito por CWID Bayer. Atualize o app com Relatorio e/ou KSB1.</p>
           </div>
           <div class="page-actions dash-head-actions" id="admin-session-actions" hidden>
             <button type="button" class="btn btn-ghost" id="btn-admin-logout">Sair</button>
@@ -681,7 +692,7 @@ CALCULATE(
 
         <!-- Gate de matrícula -->
         <div class="auth-gate" id="admin-gate">
-          <img class="auth-logo" src="assets/bayer-logo.png?v=dash38" width="72" height="72" alt="Bayer">
+          <img class="auth-logo" src="assets/bayer-logo.png?v=dash49" width="72" height="72" alt="Bayer">
           <h2>Entrada do administrador</h2>
           <p>Acesso restrito aos CWIDs autorizados: <strong>CBAIS</strong>, <strong>GPGMS</strong> e <strong>GPUST</strong>.</p>
           <form id="form-admin-login" class="auth-form" autocomplete="on">
@@ -698,29 +709,28 @@ CALCULATE(
         <div id="admin-workspace" hidden>
           <div class="admin-intro">
             <p>
-              <strong>Para atualizar o app:</strong> no Excel, exporte / salve só a aba
-              <strong>Relatorio</strong> (ou o arquivo inteiro, desde que essa aba exista) e envie abaixo.
-              Não precisa desocultar linhas nem colunas — o app lê tudo e já separa Budget, FC1–FC3, ACT e PY dos anos anteriores.
+              <strong>Fluxo principal:</strong> envie a <strong>KSB1 uma vez</strong> —
+              ela atualiza o <strong>realizado (ACT)</strong> do Relatorio no app, as linhas de contas
+              e os contratos monitorados. O cartão Relatorio fica opcional para refrescar Budget/FC do Excel.
             </p>
           </div>
 
           <section class="upload-guide" aria-labelledby="titulo-layout-upload">
-            <h2 id="titulo-layout-upload">Como atualizar (1 passo)</h2>
+            <h2 id="titulo-layout-upload">Como atualizar</h2>
             <ol class="upload-steps">
-              <li>Abra a planilha TSOC BFR e vá na aba <strong>Relatorio</strong>.</li>
-              <li>Exporte essa aba (ou salve o .xlsx com ela) — filtro/ocultas podem ficar como estão.</li>
-              <li>Envie o arquivo no cartão abaixo. Pronto.</li>
+              <li><strong>KSB1 (recomendado):</strong> extrato do site → Enviar → Atualizar app (KSB1). Atualiza ACT + contratos + linhas.</li>
+              <li><strong>Relatorio (opcional):</strong> só se precisar reimportar Budget/FC da aba Relatorio do Excel.</li>
+              <li>Opcional: publique o pack para o time ver a mesma base.</li>
             </ol>
             <p class="guide-note">
-              Demais abas (Overview, FAM, Ações…) <strong>não são necessárias</strong> para o Relatorio.
-              O KSB1 mensal do site (ex.: Belford Roxo_Set) entra no cartão <strong>Contratos (KSB1)</strong> abaixo.
+              A KSB1 traz <strong>todas</strong> as linhas (não só contratos). Valores vão para o ACT em milhares (k).
             </p>
           </section>
 
           <div class="upload-grid" id="upload-grid">
-            <article class="upload-card upload-card-relatorio is-primary" data-slot="relatorio">
-              <h2>Relatorio (TSOC)</h2>
-              <p class="upload-card-sub">Atualiza realizado × previsto do site.</p>
+            <article class="upload-card upload-card-relatorio" data-slot="relatorio">
+              <h2>Relatorio (opcional)</h2>
+              <p class="upload-card-sub">Reimporta Budget/FC da aba Excel. O ACT (realizado) já sobe pela KSB1.</p>
               <label class="field">
                 <span>Ano preferido (se a planilha tiver mais de um)</span>
                 <select data-upload-year id="upload-year-relatorio" aria-label="Ano preferido do Relatorio"></select>
@@ -740,20 +750,20 @@ CALCULATE(
             </article>
 
             <article class="upload-card upload-card-ksb1 is-primary" data-slot="ksb1" id="upload-card-ksb1">
-              <h2>Contratos (KSB1)</h2>
-              <p class="upload-card-sub">KSB1 mensal do site — mesmo fluxo do Relatorio.</p>
+              <h2>KSB1 (Relatorio ACT + contratos)</h2>
+              <p class="upload-card-sub">Um envio atualiza o realizado do Relatorio, as linhas de contas e os contratos.</p>
               <ul class="upload-year-list" data-ksb1-list id="ksb1-admin-list"></ul>
               <input type="file" accept=".xlsx,.xls,.csv" id="file-ksb1" hidden multiple>
               <div class="upload-actions">
                 <button type="button" class="btn btn-secondary" id="btn-upload-ksb1">
                   1. Enviar KSB1 do site
                 </button>
-                <button type="button" class="btn btn-primary" id="btn-atualizar-ksb1" disabled title="Grava o mês enviado no histórico">
-                  2. Atualizar contratos
+                <button type="button" class="btn btn-primary" id="btn-atualizar-ksb1" disabled title="Grava KSB1, atualiza ACT do Relatorio e contratos">
+                  2. Atualizar app (KSB1)
                 </button>
                 <button type="button" class="btn btn-ghost" id="btn-limpar-ksb1" hidden>Cancelar envio</button>
               </div>
-              <p class="admin-msg" id="ksb1-admin-msg" role="status">Envie a KSB1 e depois clique em Atualizar contratos.</p>
+              <p class="admin-msg" id="ksb1-admin-msg" role="status">Envie a KSB1 e depois clique em Atualizar app (KSB1) — Relatorio + contratos.</p>
               <p class="contratos-pending" id="ksb1-pending-admin" hidden role="status"></p>
             </article>
           </div>
@@ -875,15 +885,15 @@ CALCULATE(
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
   </script>
-  <script src="js/storage.js?v=dash38"></script>
-  <script src="js/auth.js?v=dash38"></script>
-  <script src="js/parser.js?v=dash38"></script>
-  <script src="js/engine.js?v=dash38"></script>
-  <script src="js/ksb1.js?v=dash38"></script>
-  <script src="js/shared.js?v=dash38"></script>
-  <script src="js/actions.js?v=dash38"></script>
-  <script src="js/copilot.js?v=dash38"></script>
-  <script src="js/ui.js?v=dash38"></script>
-  <script src="js/app.js?v=dash38"></script>
+  <script src="js/storage.js?v=dash49"></script>
+  <script src="js/auth.js?v=dash49"></script>
+  <script src="js/parser.js?v=dash49"></script>
+  <script src="js/engine.js?v=dash49"></script>
+  <script src="js/ksb1.js?v=dash49"></script>
+  <script src="js/shared.js?v=dash49"></script>
+  <script src="js/actions.js?v=dash49"></script>
+  <script src="js/copilot.js?v=dash49"></script>
+  <script src="js/ui.js?v=dash49"></script>
+  <script src="js/app.js?v=dash49"></script>
 </body>
 </html>

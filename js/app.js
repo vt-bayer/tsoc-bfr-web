@@ -15,8 +15,11 @@
     ksb1Months: [],
     ksb1ViewKey: 'all',
     ksb1Pending: null,
-    ksb1LastAnalysis: null
+    ksb1LastAnalysis: null,
+    /** Escopo multi-CC ao abrir KSB1 a partir de um setor (Detalhes). */
+    ksb1CcScope: null
   };
+  window.App = App;
 
   const KSB1_LEGACY_SLOT = 'ksb1';
   const KSB1_INDEX_SLOT = 'ksb1_index';
@@ -56,12 +59,15 @@
 
   function refreshContratos() {
     const filters = readKsb1Filters();
+    if (App.ksb1CcScope?.length) filters.ccs = App.ksb1CcScope;
     const historyForGap = filters.area || filters.contrato
       ? Ksb1.filterRows(App.ksb1HistoryRows, { area: filters.area, contrato: filters.contrato })
       : App.ksb1HistoryRows;
+    // Gap só nos contratos monitorados; a tabela de lançamentos usa a KSB1 completa
+    const gapSource = (historyForGap || []).filter((r) => Ksb1.isMonitoredRow(r));
     // Meses em ordem cronológica para a linha do tempo
     const monthsAsc = [...App.ksb1Months].sort((a, b) => (a.year - b.year) || (a.month - b.month));
-    const analysis = Ksb1.analyzeTimeline(historyForGap, monthsAsc);
+    const analysis = Ksb1.analyzeTimeline(gapSource, monthsAsc);
     App.ksb1LastAnalysis = analysis;
     UI.renderContratos(App.ksb1Rows, App.ksb1Meta, filters, {
       months: App.ksb1Months,
@@ -70,6 +76,68 @@
       analysis
     });
     setAtualizarKsb1Ready(Boolean(App.ksb1Pending));
+  }
+
+  function normCcKey(cc) {
+    const s = String(cc || '').toUpperCase().trim();
+    const m = s.match(/MW\d+[A-Z0-9]*/);
+    return m ? m[0] : s.replace(/[^A-Z0-9]/g, '');
+  }
+
+  /** Abre a aba Contratos (KSB1) já filtrada pelos centros do detalhe. */
+  async function openKsb1ForCcs(ccs, label) {
+    const list = [...new Set((ccs || []).map(normCcKey).filter(Boolean))];
+    UI.closeDrawer();
+
+    ['filtro-ksb1-area', 'filtro-ksb1-contrato', 'filtro-ksb1-cc'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const forn = document.getElementById('filtro-ksb1-fornecedor');
+    const busca = document.getElementById('filtro-ksb1-busca');
+    if (forn) forn.value = '';
+    if (busca) busca.value = '';
+    UI.state.ksb1GapStatusFilter = 'all';
+
+    App.ksb1CcScope = list.length > 1 ? list : null;
+
+    if (App.ksb1ViewKey !== 'all' && App.ksb1Months.length) {
+      try {
+        await loadKsb1View('all');
+      } catch (_) { /* segue com o que houver */ }
+    }
+
+    UI.setTab('contratos');
+    refreshContratos();
+
+    if (list.length === 1) {
+      const ccEl = document.getElementById('filtro-ksb1-cc');
+      if (ccEl) {
+        if (![...ccEl.options].some((o) => normCcKey(o.value) === list[0])) {
+          const opt = document.createElement('option');
+          opt.value = list[0];
+          opt.textContent = list[0];
+          ccEl.appendChild(opt);
+        }
+        const match = [...ccEl.options].find((o) => normCcKey(o.value) === list[0]);
+        ccEl.value = match ? match.value : list[0];
+        App.ksb1CcScope = null;
+        refreshContratos();
+      }
+    }
+
+    const scoped = Ksb1.filterRows(App.ksb1Rows || [], list.length === 1
+      ? { cc: list[0] }
+      : { ccs: list });
+    const n = scoped.length;
+    const title = label || (list.length === 1 ? list[0] : `${list.length} centros`);
+    UI.showToast(n
+      ? `KSB1 · ${title} · ${n.toLocaleString('pt-BR')} linha(s)`
+      : `KSB1 · ${title} · sem linhas — envie o extrato no Admin`);
+
+    requestAnimationFrame(() => {
+      document.querySelector('.contratos-lancamentos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   function openKsb1ContratoDetail(contratoKey) {
@@ -258,7 +326,7 @@
     await loadKsb1View(getStoredKsb1ViewKey());
   }
 
-  /** Upload: só prepara; histórico só muda ao clicar Atualizar contratos. */
+  /** Upload: só prepara; histórico + ACT do Relatorio mudam ao clicar Atualizar app (KSB1). */
   async function stageKsb1Files(fileList) {
     const files = [...(fileList || [])];
     if (!files.length) return;
@@ -267,9 +335,10 @@
       UI.setTab('admin');
       return;
     }
-    const parsed = await Ksb1.parseFiles(files);
+    // Todas as linhas da KSB1 (não só contratos monitorados) — alimenta Relatorio ACT + Contratos
+    const parsed = await Ksb1.parseFiles(files, { onlyMonitored: false });
     if (!parsed.rows.length) {
-      throw new Error('Nenhum contrato monitorado encontrado neste arquivo.');
+      throw new Error('Nenhuma linha válida na KSB1 (Cost Center + valor).');
     }
     const tagged = Ksb1.tagRowsWithOwnPeriod(parsed.rows, {
       fallbackYear: seedYear(),
@@ -282,6 +351,7 @@
     const period = byMonth[byMonth.length - 1].period;
     const uploadedAt = new Date().toISOString();
     const monthLabels = byMonth.map((g) => g.period.label);
+    const nMonitored = tagged.rows.filter((r) => Ksb1.isMonitoredRow(r)).length;
     App.ksb1Pending = {
       rows: tagged.rows,
       byMonth,
@@ -302,22 +372,77 @@
         fileName: parsed.meta.source,
         uploadedAt,
         pending: true,
-        missingPeriod: tagged.missing || 0
+        missingPeriod: tagged.missing || 0,
+        monitoredCount: nMonitored,
+        updateRelatorioAct: true
       }
     };
     setAtualizarKsb1Ready(true);
     refreshContratos();
-    const nMon = tagged.rows.length.toLocaleString('pt-BR');
-    const nRaw = (parsed.meta.rowCountRaw ?? tagged.rows.length).toLocaleString('pt-BR');
+    const nAll = tagged.rows.length.toLocaleString('pt-BR');
+    const nMon = nMonitored.toLocaleString('pt-BR');
     const span = byMonth.length > 1
       ? `${byMonth.length} meses (${monthLabels[0]} → ${monthLabels[monthLabels.length - 1]})`
       : period.label;
-    UI.showToast(`${span}: ${nMon} linhas prontas. Clique em Atualizar contratos.`);
+    UI.showToast(`${span}: ${nAll} linhas KSB1 prontas (atualiza Relatorio + contratos).`);
     UI.setTab('admin');
     const adminMsg = document.getElementById('ksb1-admin-msg');
     if (adminMsg) {
-      adminMsg.textContent = `${span}: ${nMon} linhas prontas. Clique em 2. Atualizar contratos.`;
+      adminMsg.textContent = `${span}: ${nAll} linhas (${nMon} de contratos monitorados). Clique em 2. Atualizar app (KSB1) — grava lançamentos e ACT do Relatorio.`;
     }
+  }
+
+  /** Usa a KSB1 completa para atualizar o ACT (realizado) do Relatorio no app. */
+  async function applyKsb1ToRelatorio(ksb1Rows) {
+    const rows = ksb1Rows || [];
+    if (!rows.length) return { years: [], totalMatched: 0, totalCreated: 0 };
+
+    const years = [...new Set(rows.map((r) => Number(r.ano)).filter((y) => y >= 2000 && y <= 2100))];
+    if (!years.length) years.push(seedYear());
+
+    let totalMatched = 0;
+    let totalCreated = 0;
+    const touchedYears = [];
+
+    for (const year of years.sort((a, b) => a - b)) {
+      const actPack = Ksb1.aggregateRelatorioAct(rows, { year });
+      if (!actPack.keyCount || !actPack.monthsTouched.length) continue;
+
+      const slotList = await Storage.listSlots();
+      const yearSlots = Storage.slotsForYear(slotList, year);
+      const hasUploads = Storage.FORECASTS.some((k) => yearSlots[k]?.rows?.length);
+      const seedRows = year === seedYear() ? (App.seed?.rows || []) : [];
+      const baseRows = hasUploads
+        ? Parser.mergeSlots(yearSlots, seedRows)
+        : seedRows.map((r) => ({
+          ...r,
+          bud: { ...Parser.emptyMonths(), ...(r.bud || {}) },
+          fc1: { ...Parser.emptyMonths(), ...(r.fc1 || {}) },
+          fc2: { ...Parser.emptyMonths(), ...(r.fc2 || {}) },
+          fc3: { ...Parser.emptyMonths(), ...(r.fc3 || {}) },
+          act: { ...Parser.emptyMonths(), ...(r.act || {}) }
+        }));
+
+      const ccLookup = Parser.buildCcLookup(baseRows.length ? baseRows : seedRows);
+      const { rows: patched, stats } = Parser.applyKsb1Act(baseRows, actPack, { ccLookup });
+      if (!patched.length) continue;
+
+      await saveYearDataset(year, patched, {
+        fileName: `KSB1 → Relatorio ACT ${year}`,
+        source: 'KSB1 ACT',
+        forecast: 'fc3'
+      });
+      totalMatched += stats.matched;
+      totalCreated += stats.created;
+      touchedYears.push({
+        year,
+        months: stats.months,
+        matched: stats.matched,
+        created: stats.created
+      });
+    }
+
+    return { years: touchedYears, totalMatched, totalCreated };
   }
 
   async function applyKsb1Pending() {
@@ -390,16 +515,33 @@
     setAtualizarKsb1Ready(false);
     const focus = period?.key || buckets[buckets.length - 1].period.key;
     await loadKsb1View(buckets.length > 1 ? 'all' : focus);
+
+    // Atualiza o ACT do Relatorio (realizado) com a KSB1 completa — um envio só
+    let actInfo = { years: [], totalMatched: 0, totalCreated: 0 };
+    try {
+      actInfo = await applyKsb1ToRelatorio(pending.rows);
+      const actYear = actInfo.years[0]?.year || period?.year || App.selectedYear || seedYear();
+      App.selectedYear = actYear;
+      Storage.setPreferredYear(actYear);
+      await rebuildDataset({ year: actYear });
+    } catch (err) {
+      console.error('KSB1 → Relatorio ACT:', err);
+      UI.showToast('KSB1 gravada, mas falhou ao atualizar o ACT do Relatorio.');
+    }
+
     const slotList = await Storage.listSlots();
     refreshAdminUi(slotList);
     const span = buckets.length > 1
       ? `${buckets.length} meses gravados (${buckets[0].period.label} → ${buckets[buckets.length - 1].period.label})`
       : buckets[0].period.label;
+    const actTxt = actInfo.years.length
+      ? ` · Relatorio ACT: ${actInfo.totalMatched} conta(s) + ${actInfo.totalCreated} nova(s)`
+      : '';
     const adminMsg = document.getElementById('ksb1-admin-msg');
     if (adminMsg) {
-      adminMsg.textContent = `Contratos atualizados: ${span} · ${monthsNow.length} mês(es) no histórico.`;
+      adminMsg.textContent = `App atualizado com KSB1: ${span} · ${monthsNow.length} mês(es) no histórico${actTxt}.`;
     }
-    UI.showToast(`${span} · histórico total: ${monthsNow.length} mês(es) · ${created} novo(s), ${updated} atualizado(s).`);
+    UI.showToast(`App atualizado (KSB1 + Relatorio): ${span}${actTxt}`);
     UI.setTab('admin');
   }
 
@@ -795,20 +937,22 @@
   }
 
   function refreshOverviewChart() {
-    const filters = UI.readFilters();
-    const series = Engine.siteMonthlySeries(App.rows, filters);
-    UI.renderOverviewChart(series, filters);
+    const base = UI.readFilters();
+    const mesData = Engine.waterfallByGroup(App.rows, { ...base, periodo: 'mes' });
+    const ytdData = Engine.waterfallByGroup(App.rows, { ...base, periodo: 'ytd' });
+    UI.renderExecWaterfalls(mesData, ytdData);
   }
 
   function refreshDetails() {
     const filters = UI.readFilters();
     const ccList = Engine.aggregateCostCenters(App.rows, filters);
+    const sectorList = Engine.aggregateSectors(ccList);
     const sum = Engine.summary(ccList, filters, {
       yearMode: App.yearMode,
       year: App.selectedYear
     });
     UI.renderKpis(sum);
-    UI.renderRanking(ccList);
+    UI.renderRanking(sectorList);
     UI.renderHomeSnapshot(App.rows);
     refreshOverviewChart();
   }
@@ -913,11 +1057,37 @@
 
   function openCc(cc, unidade, setor) {
     const detail = findCcDetail(cc, unidade, setor);
-    if (!detail) {
+    const code = detail?.cc || cc;
+    if (!code) {
       UI.showToast('Centro de custo não encontrado para os filtros atuais.');
       return;
     }
-    UI.openDrawer(detail, UI.readFilters());
+    openKsb1ForCcs([code], code);
+  }
+
+  function openSetor(unidade, setor) {
+    if (!setor) {
+      UI.showToast('Setor não informado.');
+      return;
+    }
+    const filters = UI.readFilters();
+    const scoped = {
+      ...filters,
+      unidade: unidade || filters.unidade,
+      setor
+    };
+    const ccList = Engine.aggregateCostCenters(App.rows, scoped);
+    const sectors = Engine.aggregateSectors(ccList);
+    const detail = sectors.find((s) => s.setor === setor && (!unidade || s.unidade === unidade))
+      || sectors[0];
+    if (!detail) {
+      UI.showToast('Setor não encontrado para os filtros atuais.');
+      return;
+    }
+    const ccs = detail.ccCodes?.length
+      ? detail.ccCodes
+      : (detail.accounts || []).map((a) => a.cc).filter(Boolean);
+    openKsb1ForCcs(ccs, setor);
   }
 
   function exportCsv() {
@@ -1298,19 +1468,23 @@
 
     document.getElementById('btn-ver-todos').addEventListener('click', () => {
       const filters = UI.readFilters();
-      const ccList = Engine.aggregateCostCenters(App.rows, filters);
-      if (UI.state.rankingLimit < ccList.length) UI.state.rankingLimit = ccList.length;
+      const sectorList = Engine.aggregateSectors(Engine.aggregateCostCenters(App.rows, filters));
+      if (UI.state.rankingLimit < sectorList.length) UI.state.rankingLimit = sectorList.length;
       else UI.state.rankingLimit = 10;
-      UI.renderRanking(ccList);
+      UI.renderRanking(sectorList);
     });
 
     document.getElementById('tbody-ranking').addEventListener('click', (e) => {
-      const openBtn = e.target.closest('[data-open-cc], tr.rank-row');
+      const openBtn = e.target.closest('[data-open-setor], [data-open-cc], tr.rank-row');
       if (!openBtn) return;
       const row = openBtn.closest('tr') || openBtn;
-      const cc = openBtn.dataset.openCc || row.dataset.cc;
       const unidade = openBtn.dataset.unidade || row.dataset.unidade;
       const setor = openBtn.dataset.setor || row.dataset.setor;
+      if (openBtn.dataset.openSetor || row.dataset.level === 'setor' || (!openBtn.dataset.openCc && !row.dataset.cc)) {
+        if (setor) openSetor(unidade, setor);
+        return;
+      }
+      const cc = openBtn.dataset.openCc || row.dataset.cc;
       if (cc) openCc(cc, unidade, setor);
     });
 
@@ -1802,7 +1976,10 @@
       else UI.showToast('Nenhum gap no histórico.');
     });
     ['filtro-ksb1-area', 'filtro-ksb1-contrato', 'filtro-ksb1-cc'].forEach((id) => {
-      document.getElementById(id)?.addEventListener('change', refreshContratos);
+      document.getElementById(id)?.addEventListener('change', () => {
+        if (id === 'filtro-ksb1-cc') App.ksb1CcScope = null;
+        refreshContratos();
+      });
     });
     ['filtro-ksb1-fornecedor', 'filtro-ksb1-busca'].forEach((id) => {
       document.getElementById(id)?.addEventListener('input', refreshContratos);
@@ -1816,6 +1993,7 @@
       const busca = document.getElementById('filtro-ksb1-busca');
       if (forn) forn.value = '';
       if (busca) busca.value = '';
+      App.ksb1CcScope = null;
       UI.state.ksb1GapStatusFilter = 'all';
       refreshContratos();
     });
@@ -1843,6 +2021,7 @@
   async function init() {
     bindEvents();
     UI.setTab('inicio');
+    UI.placeFilters();
     const asFile = warnIfOpenedAsFile();
     await Auth.loadAuthorized();
 

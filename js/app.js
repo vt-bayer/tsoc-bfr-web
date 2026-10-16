@@ -795,16 +795,7 @@
   }
 
   function refreshOverviewChart() {
-    const filters = {
-      ...UI.readFilters(),
-      unidade: '',
-      setor: '',
-      categoria: '',
-      busca: '',
-      scenario: document.getElementById('filtro-cenario')?.value || 'fc2',
-      periodo: 'ytd',
-      mes: document.getElementById('filtro-mes')?.value || 'ago'
-    };
+    const filters = UI.readFilters();
     const series = Engine.siteMonthlySeries(App.rows, filters);
     UI.renderOverviewChart(series, filters);
   }
@@ -818,6 +809,7 @@
     });
     UI.renderKpis(sum);
     UI.renderRanking(ccList);
+    UI.renderHomeSnapshot(App.rows);
     refreshOverviewChart();
   }
 

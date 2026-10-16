@@ -27,6 +27,18 @@ const UI = (() => {
     showToast._t = setTimeout(() => { el.hidden = true; }, 3200);
   }
 
+  function placeFilters(tab) {
+    const filtros = $('#filtros');
+    if (!filtros) return;
+    const hostInicio = $('#filtros-host-inicio');
+    const hostDetalhes = $('#filtros-host-detalhes');
+    if (tab === 'detalhes' && hostDetalhes) {
+      hostDetalhes.appendChild(filtros);
+    } else if (hostInicio) {
+      hostInicio.appendChild(filtros);
+    }
+  }
+
   function setTab(tab) {
     document.querySelectorAll('.nav-btn').forEach((btn) => {
       btn.classList.toggle('is-active', btn.dataset.tab === tab);
@@ -40,6 +52,7 @@ const UI = (() => {
       panel.hidden = !active;
     });
     document.body.dataset.tab = tab;
+    placeFilters(tab);
     if (tab === 'admin' && typeof window.onAdminTabShow === 'function') {
       window.onAdminTabShow();
     }
@@ -401,15 +414,30 @@ const UI = (() => {
 
   function renderHomeSnapshot(rows) {
     const meta = Engine.metaFromRows(rows);
-    const filters = { unidade: '', setor: '', scenario: 'fc2', periodo: 'ytd', mes: 'ago', categoria: '', busca: '' };
+    const filters = readFilters();
     const ccs = Engine.aggregateCostCenters(rows, filters);
     const sum = Engine.summary(ccs, filters);
     $('#snap-unidades').textContent = meta.unidades.length;
-    $('#snap-ccs').textContent = meta.ccCount;
+    $('#snap-ccs').textContent = sum.ccs;
     $('#snap-realizado').textContent = Engine.formatK(sum.realizado);
     const diffEl = $('#snap-diff');
     diffEl.textContent = Engine.formatK(sum.diff, { signed: true });
     diffEl.className = `diff ${diffClass(sum.situacao.key)}`;
+
+    const mesLabel = Engine.MONTH_LABELS[filters.mes] || filters.mes || '';
+    const scenLabel = Engine.SCENARIO_LABELS[filters.scenario] || filters.scenario || 'FC2';
+    const realLabel = $('#snap-realizado-label');
+    const realHint = $('#snap-realizado-hint');
+    const diffLabel = $('#snap-diff-label');
+    if (realLabel) {
+      realLabel.textContent = filters.periodo === 'mes' ? 'Realizado no mês' : 'Realizado YTD';
+    }
+    if (realHint) {
+      realHint.textContent = filters.periodo === 'mes'
+        ? `${mesLabel} · k`
+        : `Acumulado até ${mesLabel} · k`;
+    }
+    if (diffLabel) diffLabel.textContent = `vs ${scenLabel}`;
   }
 
   function renderTree(tree) {
@@ -1195,7 +1223,10 @@ const UI = (() => {
     const mesLabel = Engine.MONTH_LABELS[filters?.mes] || filters?.mes || '';
     const scen = Engine.SCENARIO_LABELS[filters?.scenario] || filters?.scenario || 'FC2';
     if (hint) {
-      hint.textContent = `Barras do site até ${mesLabel} · ${scen} · Realizado (ACT/PY) versus previsto do cenário.`;
+      const parts = [`Barras até ${mesLabel}`, scen];
+      if (filters.unidade) parts.push(filters.unidade);
+      if (filters.setor) parts.push(filters.setor);
+      hint.textContent = `${parts.join(' · ')} · Realizado (ACT/PY) versus previsto.`;
     }
 
     state.overviewChart = new Chart(canvas, {

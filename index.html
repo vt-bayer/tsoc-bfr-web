@@ -9,18 +9,18 @@
   <meta name="application-name" content="TSOC BFR 2026">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/app.ico" sizes="any">
-  <link rel="icon" type="image/png" href="assets/bayer-logo.png?v=dash37">
-  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash37">
+  <link rel="icon" type="image/png" href="assets/bayer-logo.png?v=dash38">
+  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash38">
   <link rel="shortcut icon" href="assets/app.ico">
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=dash37">
+  <link rel="stylesheet" href="css/styles.css?v=dash38">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-config.js?v=dash37"></script>
-  <script src="js/supabase-auth.js?v=dash37"></script>
+  <script src="js/supabase-config.js?v=dash38"></script>
+  <script src="js/supabase-auth.js?v=dash38"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 </head>
@@ -30,7 +30,7 @@
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navegação">
       <div class="sidebar-brand">
-        <img class="bayer-logo" src="assets/bayer-logo.png?v=dash37" width="40" height="40" alt="Bayer">
+        <img class="bayer-logo" src="assets/bayer-logo.png?v=dash38" width="40" height="40" alt="Bayer">
         <div class="brand-text">
           <p class="brand-name">Bayer</p>
           <p class="brand-product">TSOC BFR 2026</p>
@@ -103,6 +103,104 @@
           </div>
         </div>
 
+        <div id="filtros-host-inicio">
+        <div class="filters sticky-filters filters-compact" id="filtros" role="search" aria-label="Filtros de análise">
+          <div class="filters-toolbar">
+            <p class="filters-toolbar-hint" id="filter-prefs-hint">Personalize os filtros da sua área (ex.: Sustentabilidade sem custos de pessoas).</p>
+            <div class="filters-toolbar-actions">
+              <span class="filter-prefs-chip" id="filter-prefs-chip" hidden></span>
+              <div class="filter-prefs">
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-filter-prefs" aria-expanded="false" aria-controls="filter-prefs-panel">
+                  Personalizar filtros
+                </button>
+                <div class="filter-prefs-panel" id="filter-prefs-panel" hidden role="dialog" aria-label="Personalizar filtros da área">
+                  <p class="filter-prefs-title">Campos visíveis</p>
+                  <div class="filter-prefs-checks" id="filter-prefs-fields">
+                    <label><input type="checkbox" data-pref-field="unidade" checked> Unidade</label>
+                    <label><input type="checkbox" data-pref-field="setor" checked> Setor</label>
+                    <label><input type="checkbox" data-pref-field="categoria" checked> Categoria</label>
+                    <label><input type="checkbox" data-pref-field="busca" checked> Busca</label>
+                  </div>
+                  <p class="filter-prefs-title">Escopo da área</p>
+                  <label class="filter-prefs-toggle">
+                    <input type="checkbox" id="pref-hide-pessoas">
+                    <span>Ocultar custos de pessoas <small>(salários, benefícios, encargos, estágio…)</small></span>
+                  </label>
+                  <p class="filter-prefs-title">Categorias que quero ver <small>(vazio = todas as permitidas)</small></p>
+                  <div class="filter-prefs-tipos" id="filter-prefs-tipos"></div>
+                  <div class="filter-prefs-footer">
+                    <button type="button" class="btn btn-ghost btn-sm" id="btn-filter-prefs-reset">Restaurar padrão</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-filter-prefs-apply">Aplicar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <label class="field" data-filter-field="ano">
+            <span>Ano</span>
+            <select id="filtro-ano" aria-label="Ano da análise">
+              <option value="2026">2026</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="unidade">
+            <span>Unidade</span>
+            <select id="filtro-unidade">
+              <option value="">Todas</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="setor">
+            <span>Setor</span>
+            <select id="filtro-setor" disabled>
+              <option value="">Todos</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="cenario">
+            <span>Comparar com</span>
+            <select id="filtro-cenario">
+              <option value="budget">Budget</option>
+              <option value="fc1">FC1</option>
+              <option value="fc2" selected>FC2</option>
+              <option value="fc3">FC3</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="periodo">
+            <span>Período</span>
+            <select id="filtro-periodo">
+              <option value="mes">Mês selecionado</option>
+              <option value="ytd" selected>Acumulado até o mês</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="mes">
+            <span>Mês</span>
+            <select id="filtro-mes">
+              <option value="jan">Janeiro</option>
+              <option value="fev">Fevereiro</option>
+              <option value="mar">Março</option>
+              <option value="abr">Abril</option>
+              <option value="mai">Maio</option>
+              <option value="jun">Junho</option>
+              <option value="jul">Julho</option>
+              <option value="ago" selected>Agosto</option>
+              <option value="set">Setembro</option>
+              <option value="out">Outubro</option>
+              <option value="nov">Novembro</option>
+              <option value="dez">Dezembro</option>
+            </select>
+          </label>
+          <label class="field" data-filter-field="categoria">
+            <span>Categoria</span>
+            <select id="filtro-categoria">
+              <option value="">Todas</option>
+            </select>
+          </label>
+          <label class="field field-grow" data-filter-field="busca">
+            <span>Buscar centro de custo</span>
+            <input type="search" id="filtro-busca" placeholder="Código ou nome, ex.: MW09C20003" autocomplete="off">
+          </label>
+        </div>
+        </div>
+
         <div class="hero-snapshot entry-snapshot kpi-grid-dash" id="inicio-snapshot">
           <article class="dash-kpi accent-blue">
             <div class="dash-kpi-top">
@@ -122,15 +220,15 @@
           </article>
           <article class="dash-kpi accent-green">
             <div class="dash-kpi-top">
-              <span class="kpi-label">Realizado YTD</span>
+              <span class="kpi-label" id="snap-realizado-label">Realizado YTD</span>
               <span class="tag tag-real">REAL</span>
             </div>
             <strong id="snap-realizado">—</strong>
-            <span class="kpi-hint">Acumulado até agosto · k</span>
+            <span class="kpi-hint" id="snap-realizado-hint">Acumulado até agosto · k</span>
           </article>
           <article class="dash-kpi accent-orange">
             <div class="dash-kpi-top">
-              <span class="kpi-label">vs FC2</span>
+              <span class="kpi-label" id="snap-diff-label">vs FC2</span>
               <span class="tag tag-gap">GAP</span>
             </div>
             <strong id="snap-diff" class="diff">—</strong>
@@ -143,11 +241,11 @@
             <h2>Realizado × previsto por mês</h2>
             <span class="tag tag-plan">LEITURA LIMPA</span>
           </div>
-          <p class="detail-panel-sub" id="overview-chart-hint">Barras do site até o mês do filtro · FC2 · acumulado YTD nos KPIs acima.</p>
+          <p class="detail-panel-sub" id="overview-chart-hint">Barras até o mês do filtro · cenário e recorte dos filtros acima.</p>
           <div class="chart-pane overview-chart-pane">
             <div class="chart-wrap chart-wrap-overview"><canvas id="chart-overview"></canvas></div>
           </div>
-          <p class="table-footnote">k = milhares · Meses sem ACT não entram como economia falsa · Abra Detalhes para filtrar por unidade/setor.</p>
+          <p class="table-footnote">k = milhares · Meses sem ACT não entram como economia falsa · O filtro de mês corta o gráfico até o mês escolhido.</p>
         </section>
 
         <div class="dash-split">
@@ -157,9 +255,9 @@
               <span class="tag tag-plan">GUIA</span>
             </div>
             <ol class="guide-steps">
-              <li><strong>Filtre</strong> unidade, setor, cenário e mês em Detalhes.</li>
-              <li><strong>Leia os KPIs</strong> antes de abrir o ranking.</li>
-              <li><strong>Priorize</strong> os maiores desvios no ranking.</li>
+              <li><strong>Filtre</strong> unidade, setor, cenário e mês neste Resumo.</li>
+              <li><strong>Leia os KPIs</strong> e o gráfico (o mês altera as barras).</li>
+              <li><strong>Abra Detalhes</strong> para o ranking com os mesmos filtros.</li>
               <li><strong>Abra o detalhe</strong> de um centro para evolução mês a mês.</li>
             </ol>
             <div class="hero-actions" style="margin-top:1rem">
@@ -302,101 +400,7 @@ CALCULATE(
 
         <p class="py-year-banner" id="py-year-banner" hidden role="status"></p>
 
-        <div class="filters sticky-filters" id="filtros" role="search" aria-label="Filtros de análise">
-          <div class="filters-toolbar">
-            <p class="filters-toolbar-hint" id="filter-prefs-hint">Personalize os filtros da sua área (ex.: Sustentabilidade sem custos de pessoas).</p>
-            <div class="filters-toolbar-actions">
-              <span class="filter-prefs-chip" id="filter-prefs-chip" hidden></span>
-              <div class="filter-prefs">
-                <button type="button" class="btn btn-ghost btn-sm" id="btn-filter-prefs" aria-expanded="false" aria-controls="filter-prefs-panel">
-                  Personalizar filtros
-                </button>
-                <div class="filter-prefs-panel" id="filter-prefs-panel" hidden role="dialog" aria-label="Personalizar filtros da área">
-                  <p class="filter-prefs-title">Campos visíveis</p>
-                  <div class="filter-prefs-checks" id="filter-prefs-fields">
-                    <label><input type="checkbox" data-pref-field="unidade" checked> Unidade</label>
-                    <label><input type="checkbox" data-pref-field="setor" checked> Setor</label>
-                    <label><input type="checkbox" data-pref-field="categoria" checked> Categoria</label>
-                    <label><input type="checkbox" data-pref-field="busca" checked> Busca</label>
-                  </div>
-                  <p class="filter-prefs-title">Escopo da área</p>
-                  <label class="filter-prefs-toggle">
-                    <input type="checkbox" id="pref-hide-pessoas">
-                    <span>Ocultar custos de pessoas <small>(salários, benefícios, encargos, estágio…)</small></span>
-                  </label>
-                  <p class="filter-prefs-title">Categorias que quero ver <small>(vazio = todas as permitidas)</small></p>
-                  <div class="filter-prefs-tipos" id="filter-prefs-tipos"></div>
-                  <div class="filter-prefs-footer">
-                    <button type="button" class="btn btn-ghost btn-sm" id="btn-filter-prefs-reset">Restaurar padrão</button>
-                    <button type="button" class="btn btn-primary btn-sm" id="btn-filter-prefs-apply">Aplicar</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <label class="field" data-filter-field="ano">
-            <span>Ano</span>
-            <select id="filtro-ano" aria-label="Ano da análise">
-              <option value="2026">2026</option>
-            </select>
-          </label>
-          <label class="field" data-filter-field="unidade">
-            <span>Unidade</span>
-            <select id="filtro-unidade">
-              <option value="">Todas</option>
-            </select>
-          </label>
-          <label class="field" data-filter-field="setor">
-            <span>Setor</span>
-            <select id="filtro-setor" disabled>
-              <option value="">Todos</option>
-            </select>
-          </label>
-          <label class="field" data-filter-field="cenario">
-            <span>Comparar com</span>
-            <select id="filtro-cenario">
-              <option value="budget">Budget</option>
-              <option value="fc1">FC1</option>
-              <option value="fc2" selected>FC2</option>
-              <option value="fc3">FC3</option>
-            </select>
-          </label>
-          <label class="field" data-filter-field="periodo">
-            <span>Período</span>
-            <select id="filtro-periodo">
-              <option value="mes">Mês selecionado</option>
-              <option value="ytd" selected>Acumulado até o mês</option>
-            </select>
-          </label>
-          <label class="field" data-filter-field="mes">
-            <span>Mês</span>
-            <select id="filtro-mes">
-              <option value="jan">Janeiro</option>
-              <option value="fev">Fevereiro</option>
-              <option value="mar">Março</option>
-              <option value="abr">Abril</option>
-              <option value="mai">Maio</option>
-              <option value="jun">Junho</option>
-              <option value="jul">Julho</option>
-              <option value="ago" selected>Agosto</option>
-              <option value="set">Setembro</option>
-              <option value="out">Outubro</option>
-              <option value="nov">Novembro</option>
-              <option value="dez">Dezembro</option>
-            </select>
-          </label>
-          <label class="field" data-filter-field="categoria">
-            <span>Categoria</span>
-            <select id="filtro-categoria">
-              <option value="">Todas</option>
-            </select>
-          </label>
-          <label class="field field-grow" data-filter-field="busca">
-            <span>Buscar centro de custo</span>
-            <input type="search" id="filtro-busca" placeholder="Código ou nome, ex.: MW09C20003" autocomplete="off">
-          </label>
-        </div>
+        <div id="filtros-host-detalhes"></div>
 
         <p class="nl-summary" id="resumo-frase" aria-live="polite"></p>
 
@@ -677,7 +681,7 @@ CALCULATE(
 
         <!-- Gate de matrícula -->
         <div class="auth-gate" id="admin-gate">
-          <img class="auth-logo" src="assets/bayer-logo.png?v=dash37" width="72" height="72" alt="Bayer">
+          <img class="auth-logo" src="assets/bayer-logo.png?v=dash38" width="72" height="72" alt="Bayer">
           <h2>Entrada do administrador</h2>
           <p>Acesso restrito aos CWIDs autorizados: <strong>CBAIS</strong>, <strong>GPGMS</strong> e <strong>GPUST</strong>.</p>
           <form id="form-admin-login" class="auth-form" autocomplete="on">
@@ -871,15 +875,15 @@ CALCULATE(
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
   </script>
-  <script src="js/storage.js?v=dash37"></script>
-  <script src="js/auth.js?v=dash37"></script>
-  <script src="js/parser.js?v=dash37"></script>
-  <script src="js/engine.js?v=dash37"></script>
-  <script src="js/ksb1.js?v=dash37"></script>
-  <script src="js/shared.js?v=dash37"></script>
-  <script src="js/actions.js?v=dash37"></script>
-  <script src="js/copilot.js?v=dash37"></script>
-  <script src="js/ui.js?v=dash37"></script>
-  <script src="js/app.js?v=dash37"></script>
+  <script src="js/storage.js?v=dash38"></script>
+  <script src="js/auth.js?v=dash38"></script>
+  <script src="js/parser.js?v=dash38"></script>
+  <script src="js/engine.js?v=dash38"></script>
+  <script src="js/ksb1.js?v=dash38"></script>
+  <script src="js/shared.js?v=dash38"></script>
+  <script src="js/actions.js?v=dash38"></script>
+  <script src="js/copilot.js?v=dash38"></script>
+  <script src="js/ui.js?v=dash38"></script>
+  <script src="js/app.js?v=dash38"></script>
 </body>
 </html>

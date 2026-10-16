@@ -1049,13 +1049,35 @@ main {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.75rem;
-  font-weight: 700;
+  gap: 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 600;
   color: var(--ink-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   min-width: 0;
+}
+
+.field > span {
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.filters-compact.sticky-filters {
+  gap: 0.45rem 0.55rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.filters-compact .filters-toolbar-hint {
+  font-size: 0.7rem;
+}
+
+.filters-compact .field select,
+.filters-compact .field input {
+  padding: 0.38rem 0.5rem;
+  font-size: 0.82rem;
+  border-radius: 8px;
 }
 
 .field select,

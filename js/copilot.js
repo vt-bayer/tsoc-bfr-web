@@ -88,25 +88,22 @@ const CopilotAgent = (() => {
   function answerTabInicio() {
     return [
       'Aba **Resumo executivo**:',
-      '• Snapshot rápido: unidades, centros, realizado, previsto e diferença',
-      '• Frase em linguagem natural do status atual',
-      '• Atalhos para Detalhes, DAX, Contratos e Admin',
+      '• **Filtros** (ano, unidade, setor, cenário, período, mês) — o mês altera o gráfico',
+      '• Snapshot: unidades, centros, realizado e diferença vs cenário',
+      '• Gráfico realizado × previsto por mês',
       '',
-      'Para filtrar por unidade/setor/mês, vá em **Detalhes & ranking**.'
+      'Os mesmos filtros valem no ranking de **Detalhes**.'
     ].join('\n');
   }
 
   function answerTabDetalhes() {
     return [
       'Aba **Detalhes & ranking** — análise operacional:',
-      '1. **Ano** — base carregada (uploads por ano no Admin)',
-      '2. **Unidade** → **Setor**',
-      '3. **Comparar com** → Budget, FC1, FC2 ou FC3',
-      '4. **Período** (mês único ou **YTD** acumulado) + **Mês**',
-      '5. **Categoria** (tipo de conta) e busca por centro',
+      '• Usa os **mesmos filtros** do Resumo (aparecem no topo ao abrir esta aba)',
+      '• Ranking dos centros por desvio',
+      '• **Ver detalhe** abre a tela cheia do centro',
       '',
-      'KPIs, frase e ranking atualizam juntos. Clique em **Ver detalhe** para a tela cheia do centro.',
-      'Dá para baixar o recorte (download) pelo botão da própria aba.'
+      'Exportar CSV e histórico do mês ficam nas ações desta aba.'
     ].join('\n');
   }
 
@@ -138,14 +135,14 @@ const CopilotAgent = (() => {
 
   function answerHowToFilter() {
     return [
-      'Na aba **Detalhes & ranking**, filtros do topo:',
+      'Os filtros ficam no **Resumo executivo** (e acompanham você em Detalhes):',
       '1. **Ano** — troca a base',
       '2. **Unidade** → **Setor**',
       '3. **Comparar com** → Budget, FC1, FC2 ou FC3',
-      '4. **Período** (mês ou acumulado) + **Mês**',
+      '4. **Período** (mês ou acumulado) + **Mês** (o mês corta o gráfico)',
       '5. **Categoria** e busca por centro',
       '',
-      'Tudo na tela (KPIs, ranking, detalhe) usa esse recorte. Pergunte depois: “resumo atual” ou “centros acima”.'
+      'KPIs, gráfico do Resumo e ranking de Detalhes usam o mesmo recorte.'
     ].join('\n');
   }
 

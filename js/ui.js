@@ -1656,7 +1656,7 @@ const UI = (() => {
         ? `Lançamentos · ${label}`
         : 'Lançamentos do contrato';
     }
-    if (tag) tag.textContent = mesKey ? (label || 'MÊS') : 'KSB1';
+    if (tag) tag.textContent = mesKey ? (label || 'MÊS') : 'CONTRATOS';
     if (body) body.innerHTML = built.html;
     if (foot) {
       foot.textContent = mesKey
@@ -1819,7 +1819,7 @@ const UI = (() => {
         <section class="dash-card detail-panel" id="ksb1-contrato-lanc-panel">
           <div class="dash-card-head">
             <h2 id="ksb1-contrato-lanc-title">Lançamentos do contrato</h2>
-            <span class="tag tag-real" id="ksb1-contrato-lanc-tag">KSB1</span>
+            <span class="tag tag-real" id="ksb1-contrato-lanc-tag">CONTRATOS</span>
           </div>
           <div class="table-wrap detail-table-fill">
             <table class="data-table data-table-compact">
@@ -2297,7 +2297,7 @@ const UI = (() => {
       const view = viewKey === 'all'
         ? 'Todos os meses'
         : (months.find((m) => m.key === viewKey)?.label || meta?.mesLabel || 'Mês');
-      status.textContent = `${view} · ${meta?.fileName || meta?.source || 'KSB1'} · ${rows.length.toLocaleString('pt-BR')} linhas${raw}${hist}${when ? ` · ${when}` : ''}${areas ? ` · ${areas}` : ''}`;
+      status.textContent = `${view} · ${meta?.fileName || meta?.source || 'Contratos'} · ${rows.length.toLocaleString('pt-BR')} linhas${raw}${hist}${when ? ` · ${when}` : ''}${areas ? ` · ${areas}` : ''}`;
     }
     if (kpis) kpis.hidden = false;
     if (grid) grid.hidden = !rows.length;

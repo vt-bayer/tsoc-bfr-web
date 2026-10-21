@@ -17,8 +17,13 @@
     ksb1Pending: null,
     ksb1LastAnalysis: null,
     /** Escopo multi-CC ao abrir KSB1 a partir de um setor (Detalhes). */
-    ksb1CcScope: null
+    ksb1CcScope: null,
+    /** Linhas da aba KSB1 do Excel TSOC — fonte da Analise N2 (não é o histórico de Contratos). */
+    ksb1AnaliseRows: [],
+    ksb1AnaliseMeta: null
   };
+
+  const KSB1_ANALISE_SLOT = 'ksb1_analise';
   window.App = App;
 
   const KSB1_LEGACY_SLOT = 'ksb1';
@@ -140,11 +145,6 @@
       document.querySelector('.contratos-lancamentos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
-
-  /** Exposto para o drawer: clicar numa conta → linhas Contratos daquela conta. */
-  window.openKsb1ForDetailConta = function openKsb1ForDetailConta(conta, ccs, label) {
-    return openKsb1ForCcs(ccs || [], label || conta, { conta: conta || '' });
-  };
 
   function openKsb1ContratoDetail(contratoKey) {
     const key = String(contratoKey || '');
@@ -966,9 +966,180 @@
 
   function refreshAnaliseN2() {
     const filters = UI.readAnaliseN2Filters();
-    const pack = Engine.pivotAnaliseN2(App.rows || [], filters);
+    const ksb1 = App.ksb1AnaliseRows || [];
+    const pack = ksb1.length
+      ? Engine.pivotAnaliseN2FromKsb1(ksb1, filters)
+      : Engine.pivotAnaliseN2(App.rows || [], filters);
     UI.renderAnaliseN2(pack);
   }
+
+  function slimKsb1AnaliseRows(rows) {
+    return (rows || []).map((r) => ({
+      comentario: r.comentario || '',
+      unidade: r.unidade || '',
+      setor: r.setor || '',
+      natureza: r.natureza || '',
+      tipoConta: r.tipoConta || '',
+      cc: r.cc || '',
+      conta: r.conta || '',
+      contaDesc: r.contaDesc || '',
+      fornecedorNome: r.fornecedorNome || r.fornecedor || '',
+      pedido: r.pedido || '',
+      documento: r.documento || '',
+      periodo: r.periodo || '',
+      valor: Number(r.valor) || 0
+    }));
+  }
+
+  async function persistKsb1Analise(rows, meta, fileName) {
+    const slim = slimKsb1AnaliseRows(rows);
+    App.ksb1AnaliseRows = slim;
+    App.ksb1AnaliseMeta = { ...(meta || {}), rowCount: slim.length, fileName: fileName || meta?.fileName };
+    try {
+      await Storage.saveSlot(KSB1_ANALISE_SLOT, {
+        fileName: fileName || 'ksb1-analise',
+        rows: slim,
+        meta: App.ksb1AnaliseMeta,
+        uploadedAt: new Date().toISOString()
+      });
+      return { ok: true, count: slim.length };
+    } catch (err) {
+      console.warn('Falha ao gravar KSB1 Analise N2 no IndexedDB (mantido em memória)', err);
+      return { ok: false, count: slim.length, error: err };
+    }
+  }
+
+  async function loadKsb1AnaliseFromRepoJson() {
+    try {
+      const res = await fetch('data/ksb1-analise.json', { cache: 'no-store' });
+      if (!res.ok) return false;
+      const pack = await res.json();
+      if (!pack?.rows?.length) return false;
+      await persistKsb1Analise(pack.rows, pack.meta || {}, pack.fileName || 'ksb1-analise.json');
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function loadKsb1AnaliseFromStorage() {
+    try {
+      const slot = await Storage.getSlot(KSB1_ANALISE_SLOT);
+      if (slot?.rows?.length) {
+        App.ksb1AnaliseRows = slot.rows;
+        App.ksb1AnaliseMeta = slot.meta || null;
+        return;
+      }
+      // Se ainda não gravou o slot, tenta extrair a aba KSB1 do Excel TSOC já salvo no Relatorio
+      const year = App.selectedYear || seedYear();
+      for (const fc of Storage.FORECASTS) {
+        const rel = await Storage.getSlot(Storage.slotKey(fc, year));
+        if (!rel?.fileBlob) continue;
+        const file = new File([rel.fileBlob], rel.fileName || 'tsoc.xlsx', {
+          type: rel.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const pack = await Ksb1.parseTsocKsb1File(file);
+        if (pack.rows?.length) {
+          await persistKsb1Analise(pack.rows, pack.meta, rel.fileName);
+          return;
+        }
+      }
+      // Fallback local: data/ksb1-analise.json (ex.: gerado a partir de TSOC.TEST.xlsx)
+      if (await loadKsb1AnaliseFromRepoJson()) return;
+      App.ksb1AnaliseRows = [];
+      App.ksb1AnaliseMeta = null;
+    } catch (_) {
+      App.ksb1AnaliseRows = [];
+      App.ksb1AnaliseMeta = null;
+    }
+  }
+
+  /**
+   * Extrato KSB1 como Detalhes1–4 do Excel TSOC.
+   * Clique num valor da Analise N2 → linhas daquele Comentário (+ mês, se veio da célula).
+   */
+  function openN2ComentarioLines(comentario, opts = {}) {
+    const label = String(comentario || '').trim();
+    if (!label) return;
+    const source = App.ksb1AnaliseRows || [];
+    if (!source.length) {
+      UI.showToast('Envie o Excel TSOC no Admin (Relatorio) para carregar a aba KSB1 da Analise N2.');
+      return;
+    }
+
+    const filters = { ...UI.readAnaliseN2Filters(), ...(opts.filters || {}) };
+    const mesKey = String(opts.mes || '').trim(); // jan…dez
+    const mesNum = mesKey && Engine.MONTHS.includes(mesKey)
+      ? Engine.MONTHS.indexOf(mesKey) + 1
+      : null;
+
+    const matchesLabel = (r) => {
+      const c = String(r.comentario || '').trim();
+      if (c && c !== '-' && c === label) return true;
+      if ((!c || c === '-') && String(r.fornecedorNome || '').trim() === label) return true;
+      return false;
+    };
+
+    const rows = source.filter((r) => {
+      if (!matchesLabel(r)) return false;
+      if (filters.unidade && r.unidade !== filters.unidade) return false;
+      if (filters.setor && r.setor !== filters.setor) return false;
+      if (filters.natureza && r.natureza !== filters.natureza) return false;
+      if (filters.tipoConta && r.tipoConta !== filters.tipoConta) return false;
+      if (filters.cc) {
+        const rowCc = String(r.cc || '').toUpperCase();
+        const want = String(filters.cc).toUpperCase();
+        if (rowCc !== want && !rowCc.includes(want)) return false;
+      }
+      if (mesNum != null) {
+        const p = Number(String(r.periodo || '').replace(/\D/g, ''));
+        if (p !== mesNum) return false;
+      }
+      return true;
+    });
+
+    const mapped = rows.map((r) => ({
+      source: 'ksb1',
+      comentario: r.comentario || label,
+      unidade: r.unidade || '',
+      setor: r.setor || '',
+      natureza: r.natureza || '',
+      tipoConta: r.tipoConta || '',
+      conta: r.conta || '',
+      contaDesc: r.contaDesc || '',
+      cc: r.cc || '',
+      fornecedor: r.fornecedorNome || r.fornecedor || '',
+      pedido: r.pedido || r.documento || '',
+      periodo: r.periodo || '',
+      valor: Number(r.valor) || 0
+    })).sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
+
+    const total = mapped.reduce((s, r) => s + r.valor, 0);
+    const mesLabel = mesKey
+      ? (Engine.MONTH_LABELS[mesKey] || mesKey)
+      : null;
+    const scopeBits = [
+      mesLabel ? `Period: ${mesNum} (${mesLabel})` : null,
+      filters.setor ? `Setor: ${filters.setor}` : null,
+      filters.natureza ? `Natureza: ${filters.natureza}` : null,
+      filters.unidade ? `Unidade: ${filters.unidade}` : null,
+      filters.cc ? `CC: ${filters.cc}` : null
+    ].filter(Boolean);
+
+    UI.openAccountLinesScreen({
+      conta: label,
+      tipo: 'Analise N2',
+      linesPack: { rows: mapped, total, source: 'ksb1', conta: label, layout: 'n2' },
+      titleOverride: label,
+      metaOverride: [
+        scopeBits.length ? scopeBits.join(' · ') : null,
+        `${mapped.length.toLocaleString('pt-BR')} linha(s) KSB1`,
+        `Total ${typeof Ksb1 !== 'undefined' && Ksb1.formatMoney ? Ksb1.formatMoney(total) : total}`
+      ].filter(Boolean).join(' · '),
+      kickerOverride: 'Detalhes · Soma de Var.val.in rep.cur. (KSB1)'
+    });
+  }
+  window.openN2ComentarioLines = openN2ComentarioLines;
 
   function setYearLabels(year) {
     const y = String(year || App.selectedYear || seedYear());
@@ -1168,19 +1339,38 @@
     }
     const y = Number(year) || App.selectedYear || seedYear();
     const msg = document.getElementById('admin-msg');
-    msg.textContent = `Lendo Relatorio de ${file.name}…`;
+    msg.textContent = `Lendo ${file.name}…`;
+
+    let ksb1N2Txt = '';
+    let ksb1Count = 0;
+    try {
+      const ksb1Pack = await Ksb1.parseTsocKsb1File(file);
+      if (ksb1Pack.rows?.length) {
+        const saved = await persistKsb1Analise(ksb1Pack.rows, ksb1Pack.meta, file.name);
+        ksb1Count = saved.count;
+        ksb1N2Txt = ` · Analise N2: ${ksb1Count.toLocaleString('pt-BR')} linhas KSB1`;
+        refreshAnaliseN2();
+      }
+    } catch (ksb1Err) {
+      console.warn('KSB1 Analise N2 não carregada deste arquivo', ksb1Err);
+    }
+
     try {
       const parsed = await Parser.parseFile(file);
       const yearsMap = parsed.years || {};
       const currentYear = Number(parsed.currentYear) || y;
       const currentRows = yearsMap[currentYear] || parsed.rows || [];
       if (!currentRows.length && !Object.values(yearsMap).some((r) => r?.length)) {
+        if (ksb1Count) {
+          msg.textContent = `KSB1 da Analise N2 carregada (${ksb1Count.toLocaleString('pt-BR')} linhas). Este arquivo não tem Relatorio — envie o TSOC completo ou a aba Relatorio para o resto do app.`;
+          UI.showToast('Analise N2 atualizada pela KSB1. Relatorio não encontrado neste arquivo.');
+          return;
+        }
         throw new Error('Nenhuma linha válida na aba Relatorio (centros MW…).');
       }
 
       const fileBlob = await file.arrayBuffer().then((buf) => new Blob([buf], { type: file.type || 'application/octet-stream' }));
 
-      // Ano selecionado / ano do ACT na planilha
       const primaryYear = yearsMap[y]?.length ? y : currentYear;
       const primaryRows = yearsMap[primaryYear] || currentRows;
       await saveYearDataset(primaryYear, primaryRows, {
@@ -1191,7 +1381,6 @@
         forecast
       });
 
-      // Anos anteriores (PY) embutidos na mesma Relatorio
       const priorYears = [];
       for (const [yearKey, rows] of Object.entries(yearsMap)) {
         const yy = Number(yearKey);
@@ -1223,12 +1412,19 @@
         ? ` · ${st.hiddenRows} linha(s) ocultas/filtradas também lidas`
         : ' · todas as linhas da aba (inclui ocultas)';
       const colTxt = st?.hiddenCols ? ` · ${st.hiddenCols} coluna(s) ocultas lidas` : '';
-      msg.textContent = `Planilha salva: ${primaryRows.length} linhas em ${primaryYear}${priorTxt}${hiddenTxt}${colTxt}. Clique em Atualizar app.`;
-      UI.showToast('Relatorio enviado. Clique em Atualizar app.');
+      msg.textContent = `Planilha salva: ${primaryRows.length} linhas em ${primaryYear}${priorTxt}${hiddenTxt}${colTxt}${ksb1N2Txt}. Clique em Atualizar app.`;
+      UI.showToast(ksb1N2Txt
+        ? 'Relatorio + KSB1 (Analise N2) ok. Clique em Atualizar app.'
+        : 'Relatorio ok (sem aba KSB1 neste arquivo). Clique em Atualizar app.');
     } catch (err) {
       console.error(err);
+      if (ksb1Count) {
+        msg.textContent = `Analise N2 atualizada (${ksb1Count.toLocaleString('pt-BR')} linhas KSB1). Relatorio: ${err.message || 'falhou'}.`;
+        UI.showToast('KSB1 da Analise N2 ok. Relatorio não importou — confira a aba Relatorio.');
+        return;
+      }
       msg.textContent = err.message || 'Falha ao importar a planilha.';
-      UI.showToast('Não foi possível importar. Confira se a aba Relatorio existe.');
+      UI.showToast('Não foi possível importar. Envie o Excel TSOC completo (Relatorio + KSB1).');
       setAtualizarAppReady(false);
     }
   }
@@ -1513,11 +1709,17 @@
     });
 
     document.getElementById('btn-fechar-drawer').addEventListener('click', UI.closeDrawer);
+    document.getElementById('btn-fechar-account-lines')?.addEventListener('click', UI.closeAccountLinesScreen);
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       const panel = document.getElementById('copilot-panel');
       if (panel && !panel.hidden) {
         setCopilotOpen(false);
+        return;
+      }
+      const accountLines = document.getElementById('account-lines-screen');
+      if (accountLines && !accountLines.hidden) {
+        UI.closeAccountLinesScreen();
         return;
       }
       UI.closeDrawer();
@@ -2092,6 +2294,8 @@
     await refreshHistorySelect();
     await rebuildDataset({ persist: true, year: App.selectedYear });
     await loadKsb1FromStorage();
+    await loadKsb1AnaliseFromStorage();
+    refreshAnaliseN2();
     await syncSharedPackFromRepo();
     refreshActions();
     refreshAuthLists();

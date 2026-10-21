@@ -674,8 +674,29 @@ const UI = (() => {
       ? (v) => Ksb1.formatMoney(v)
       : (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const slice = (pack.rows || []).slice(0, 200);
+    const isN2 = pack?.layout === 'n2';
     if (!slice.length) {
-      return '<tr><td colspan="7" class="empty-state">Sem linhas de Contratos para esta conta/centro. Envie o extrato no Admin → Atualizar app (Contratos).</td></tr>';
+      return `<tr><td colspan="${isN2 ? 9 : 7}" class="empty-state">${
+        isN2
+          ? 'Sem linhas KSB1 para este comentário/período. Envie o Excel TSOC (com aba KSB1) no Admin.'
+          : 'Sem linhas de extrato para esta conta/centro. Envie o extrato no Admin → Atualizar app (Contratos).'
+      }</td></tr>`;
+    }
+    if (isN2) {
+      // Layout como Detalhes1–4 do Excel TSOC
+      return slice.map((r) => `
+        <tr>
+          <td>${escapeHtml(r.comentario || '—')}</td>
+          <td>${escapeHtml(r.unidade || '—')}</td>
+          <td>${escapeHtml(r.setor || '—')}</td>
+          <td>${escapeHtml(r.natureza || '—')}</td>
+          <td>${escapeHtml(r.tipoConta || '—')}</td>
+          <td><strong>${escapeHtml(r.cc || '—')}</strong></td>
+          <td>${escapeHtml(r.conta || '—')}${r.contaDesc ? `<div class="muted-line">${escapeHtml(r.contaDesc)}</div>` : ''}</td>
+          <td>${escapeHtml(String(r.periodo || '—'))}</td>
+          <td class="num">${moneyKsb1(r.valor)}</td>
+        </tr>
+      `).join('');
     }
     return slice.map((r) => `
       <tr>
@@ -698,7 +719,7 @@ const UI = (() => {
       <tr class="detail-conta-row" tabindex="0" role="button"
           data-conta="${escapeHtml(a.conta || '')}"
           data-tipo="${escapeHtml(a.tipo || '')}"
-          title="Clique para ver as linhas de Contratos desta conta">
+          title="Clique para abrir o extrato desta conta">
         <td class="detail-conta-rank">${i + 1}</td>
         <td>
           <strong class="detail-conta-code">${escapeHtml(a.conta || '—')}</strong>
@@ -744,9 +765,6 @@ const UI = (() => {
     });
 
     const accountsHtml = buildRelatorioAccountsHtml(accounts);
-    const ccsForBtn = detailCostCenters(ccDetail);
-    const ccsAttr = escapeHtml(ccsForBtn.join(','));
-    const labelAttr = escapeHtml(isSetor ? (ccDetail.setor || 'Setor') : (ccDetail.cc || ''));
 
     const monthTable = series.map((m) => {
       const noAct = !m.hasAct;
@@ -852,15 +870,12 @@ const UI = (() => {
             <div class="dash-card-head" style="margin-bottom:0.15rem">
               <h2>Contas contábeis</h2>
               <span class="tag tag-plan">RELATORIO</span>
+              <span class="tag tag-real">${accounts.length} conta${accounts.length === 1 ? '' : 's'}</span>
             </div>
-            <p class="detail-panel-sub">Clique numa conta para ver de onde veio o valor nas linhas de Contratos (KSB1).</p>
+            <p class="detail-panel-sub">Clique numa conta para abrir o extrato em tela separada (não abre Contratos).</p>
           </div>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-detail-open-contratos"
-            data-ccs="${ccsAttr}" data-label="${labelAttr}">
-            Abrir todas em Contratos
-          </button>
         </div>
-        <div class="table-wrap detail-table-fill">
+        <div class="table-wrap detail-table-fill" id="contas-relatorio-wrap">
           <table class="data-table data-table-compact" id="tabela-contas-relatorio">
             <thead>
               <tr>
@@ -875,34 +890,7 @@ const UI = (() => {
             <tbody id="tbody-contas-relatorio">${accountsHtml}</tbody>
           </table>
         </div>
-        <p class="table-footnote">Até 80 contas · Valores em milhares (k) · Clique na linha para o extrato</p>
-
-        <div class="detail-ksb1-drill" id="detail-ksb1-drill" hidden>
-          <div class="detail-ksb1-drill-head">
-            <div>
-              <h3 id="detail-ksb1-drill-title">Linhas de Contratos</h3>
-              <p class="detail-panel-sub" id="detail-ksb1-drill-sub">Extrato bruto da conta selecionada</p>
-            </div>
-            <button type="button" class="btn btn-ghost btn-sm" id="btn-detail-ksb1-tab">Abrir na aba Contratos</button>
-          </div>
-          <div class="table-wrap detail-table-fill">
-            <table class="data-table data-table-compact" id="tabela-contas-detail">
-              <thead>
-                <tr>
-                  <th>Natureza</th>
-                  <th>Conta</th>
-                  <th>Centro</th>
-                  <th>Fornecedor</th>
-                  <th>Pedido / Doc.</th>
-                  <th>Período</th>
-                  <th class="num">Valor</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-contas-detail"></tbody>
-            </table>
-          </div>
-          <p class="table-footnote" id="contas-detail-footnote"></p>
-        </div>
+        <p class="table-footnote">${Math.min(accounts.length, 80)} de ${accounts.length} · milhares (k) · clique = extrato em tela nova</p>
       </section>
     `;
 
@@ -912,62 +900,27 @@ const UI = (() => {
     const bodyEl = $('#drawer-body');
     if (bodyEl) bodyEl.scrollTop = 0;
 
-    function showKsb1ForConta(conta, tipoLabel) {
-      state.drawerConta = String(conta || '');
-      const pack = detailAccountLines(state.drawerDetail, state.drawerFilters || filters, {
-        conta: state.drawerConta
-      });
-      const drill = $('#detail-ksb1-drill');
-      const tbody = $('#tbody-contas-detail');
-      const foot = $('#contas-detail-footnote');
-      const title = $('#detail-ksb1-drill-title');
-      const sub = $('#detail-ksb1-drill-sub');
-      if (drill) drill.hidden = false;
-      if (tbody) tbody.innerHTML = buildDetailLinesHtml(pack);
-      const money = typeof Ksb1 !== 'undefined' && Ksb1.formatMoney
-        ? Ksb1.formatMoney(pack.total)
-        : Engine.formatK(pack.total);
-      const countLabel = pack.rows.length > 200
-        ? `Exibindo 200 de ${pack.rows.length.toLocaleString('pt-BR')} linhas`
-        : `${pack.rows.length.toLocaleString('pt-BR')} linha(s)`;
-      if (foot) foot.textContent = `${countLabel} · Total ${money} · Conta ${state.drawerConta || '—'}`;
-      if (title) title.textContent = `Linhas de Contratos · ${state.drawerConta || 'conta'}`;
-      if (sub) {
-        sub.textContent = tipoLabel
-          ? `${tipoLabel} · extrato bruto (KSB1) filtrado por esta conta`
-          : 'Extrato bruto (KSB1) filtrado por esta conta';
-      }
-      document.querySelectorAll('.detail-conta-row').forEach((tr) => {
-        tr.classList.toggle('is-active', tr.dataset.conta === state.drawerConta);
-      });
-      drill?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
     $('#tbody-contas-relatorio')?.addEventListener('click', (e) => {
       const row = e.target.closest('.detail-conta-row');
       if (!row) return;
-      showKsb1ForConta(row.dataset.conta, row.dataset.tipo);
+      openAccountLinesScreen({
+        conta: row.dataset.conta,
+        tipo: row.dataset.tipo,
+        ccDetail,
+        filters
+      });
     });
     $('#tbody-contas-relatorio')?.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       const row = e.target.closest('.detail-conta-row');
       if (!row) return;
       e.preventDefault();
-      showKsb1ForConta(row.dataset.conta, row.dataset.tipo);
-    });
-
-    $('#btn-detail-open-contratos')?.addEventListener('click', () => {
-      const btn = $('#btn-detail-open-contratos');
-      const ccs = String(btn?.dataset.ccs || '').split(',').filter(Boolean);
-      if (typeof window.openKsb1ForDetailConta === 'function') {
-        window.openKsb1ForDetailConta('', ccs, btn?.dataset.label || '');
-      }
-    });
-    $('#btn-detail-ksb1-tab')?.addEventListener('click', () => {
-      const ccs = detailCostCenters(state.drawerDetail);
-      if (typeof window.openKsb1ForDetailConta === 'function') {
-        window.openKsb1ForDetailConta(state.drawerConta || '', ccs, state.drawerConta || '');
-      }
+      openAccountLinesScreen({
+        conta: row.dataset.conta,
+        tipo: row.dataset.tipo,
+        ccDetail,
+        filters
+      });
     });
 
     state.chartSeries = series;
@@ -1650,10 +1603,118 @@ const UI = (() => {
     };
   }
 
+  function closeAccountLinesScreen() {
+    const screen = $('#account-lines-screen');
+    if (screen) screen.hidden = true;
+    document.body.classList.remove('account-lines-open');
+    state.drawerConta = '';
+    // Volta ao detalhe do setor/CC se ainda estiver aberto
+    const detail = $('#detail-screen');
+    if (detail && !detail.hidden) {
+      document.body.classList.add('detail-open');
+    }
+  }
+
+  /** Tela à parte: extrato da conta / comentário N2 (sem ir para a aba Contratos). */
+  function openAccountLinesScreen({
+    conta, tipo, ccDetail, filters, linesPack, titleOverride, metaOverride, kickerOverride
+  } = {}) {
+    const contaKey = String(conta || '').trim();
+    state.drawerConta = contaKey;
+    const pack = linesPack || detailAccountLines(ccDetail || state.drawerDetail, filters || state.drawerFilters || {}, {
+      conta: contaKey
+    });
+    const money = typeof Ksb1 !== 'undefined' && Ksb1.formatMoney
+      ? Ksb1.formatMoney(pack.total)
+      : Engine.formatK(pack.total);
+    const countLabel = pack.rows.length > 200
+      ? `Exibindo 200 de ${pack.rows.length.toLocaleString('pt-BR')}`
+      : `${pack.rows.length.toLocaleString('pt-BR')}`;
+    const parentLabel = ccDetail?.level === 'setor'
+      ? (ccDetail.setor || 'Setor')
+      : (ccDetail?.cc || '');
+
+    const kicker = $('#account-lines-kicker');
+    const title = $('#account-lines-title');
+    const meta = $('#account-lines-meta');
+    const tags = $('#account-lines-tags');
+    const body = $('#account-lines-body');
+    const isN2 = tipo === 'Analise N2' || pack?.layout === 'n2';
+    if (kicker) {
+      kicker.textContent = kickerOverride
+        || (isN2 ? 'Detalhes · KSB1 (como no Excel)' : 'Extrato da conta · tela separada');
+    }
+    if (title) title.textContent = titleOverride || contaKey || 'Conta';
+    if (meta) {
+      meta.textContent = metaOverride || [
+        tipo || null,
+        parentLabel || null,
+        `${countLabel} linha(s)`,
+        `Total ${money}`
+      ].filter(Boolean).join(' · ');
+    }
+    if (tags) {
+      tags.innerHTML = `
+        <span class="tag tag-real">${isN2 ? 'KSB1' : 'EXTRATO'}</span>
+        ${tipo ? `<span class="tag tag-plan">${escapeHtml(tipo)}</span>` : ''}
+      `;
+    }
+    const theadN2 = `
+      <th>Comentario</th>
+      <th>Unidade</th>
+      <th>Centro de custo</th>
+      <th>Natureza</th>
+      <th>Tipo de conta</th>
+      <th>Cost Center</th>
+      <th>Cost Element</th>
+      <th>Period</th>
+      <th class="num">Val.in rep.cur.</th>
+    `;
+    const theadDefault = `
+      <th>Natureza / descrição</th>
+      <th>Conta</th>
+      <th>Centro</th>
+      <th>Fornecedor</th>
+      <th>Pedido / Doc.</th>
+      <th>Período</th>
+      <th class="num">Valor</th>
+    `;
+    if (body) {
+      body.innerHTML = `
+        <section class="dash-card detail-panel account-lines-panel">
+          <div class="dash-card-head">
+            <div>
+              <h2>${isN2 ? 'Detalhes do valor (KSB1)' : 'Linhas do extrato'}</h2>
+              <p class="detail-panel-sub">${isN2
+                ? 'Mesmas linhas da aba KSB1 do Excel — drill da Analise N2 (Detalhes1–4).'
+                : 'De onde veio o realizado desta conta — fornecedor, pedido e período.'}</p>
+            </div>
+            <span class="tag tag-gap">${isN2 ? 'COMENTÁRIO' : 'CONTA'} ${escapeHtml(contaKey || '—')}</span>
+          </div>
+          <div class="table-wrap detail-table-fill">
+            <table class="data-table data-table-compact">
+              <thead>
+                <tr>${isN2 ? theadN2 : theadDefault}</tr>
+              </thead>
+              <tbody>${buildDetailLinesHtml(pack)}</tbody>
+            </table>
+          </div>
+          <p class="table-footnote">${escapeHtml(countLabel)} linha(s) · Total ${escapeHtml(money)}</p>
+        </section>
+      `;
+      body.scrollTop = 0;
+    }
+
+    const screen = $('#account-lines-screen');
+    if (screen) screen.hidden = false;
+    document.body.classList.add('account-lines-open', 'detail-open');
+  }
+
   function closeDrawer() {
+    closeAccountLinesScreen();
     const screen = $('#detail-screen');
     if (screen) screen.hidden = true;
-    document.body.classList.remove('detail-open', 'drawer-open');
+    document.body.classList.remove('detail-open', 'drawer-open', 'account-lines-open');
     if (state.chart) {
       state.chart.destroy();
       state.chart = null;
@@ -1664,6 +1725,7 @@ const UI = (() => {
     state.contratoChart = null;
     state.contratoDrawer = null;
     state.contratoTlKey = null;
+    state.drawerConta = '';
   }
 
   function setDrawerChrome({ kicker, title, meta, tagsHtml, backLabel }) {
@@ -2771,19 +2833,49 @@ const UI = (() => {
     );
 
     tbody.innerHTML = data.rows.map((r, idx) => `
-      <tr class="${idx % 2 ? 'n2-row-alt' : ''}">
-        <td class="n2-sticky n2-col-label" title="${escapeHtml(r.comentario)}">
+      <tr class="n2-row ${idx % 2 ? 'n2-row-alt' : ''}"
+          data-comentario="${escapeHtml(r.comentario)}">
+        <td class="n2-sticky n2-col-label n2-cell-drill" tabindex="0" role="button"
+            data-comentario="${escapeHtml(r.comentario)}"
+            title="Ver todas as linhas KSB1 deste comentário">
           <span class="n2-label-text">${escapeHtml(r.comentario)}</span>
         </td>
         ${months.map((m) => {
           const v = r.months[m] || 0;
           const heat = n2HeatClass(v, maxAbs);
           const txt = formatN2Cell(v);
-          return `<td class="num n2-col-mes ${heat} ${txt ? '' : 'n2-empty'}">${txt || '·'}</td>`;
+          const clickable = Math.abs(v) >= 0.005;
+          return `<td class="num n2-col-mes ${heat} ${txt ? '' : 'n2-empty'} ${clickable ? 'n2-cell-drill' : ''}"
+            ${clickable ? `tabindex="0" role="button" data-comentario="${escapeHtml(r.comentario)}" data-mes="${m}" title="Abrir Detalhes KSB1 · ${escapeHtml(Engine.MONTH_LABELS[m] || m)}"` : ''}>${txt || '·'}</td>`;
         }).join('')}
-        <td class="num n2-col-total">${formatN2Cell(r.total)}</td>
+        <td class="num n2-col-total n2-cell-drill" tabindex="0" role="button"
+            data-comentario="${escapeHtml(r.comentario)}"
+            title="Ver todas as linhas KSB1 deste comentário">${formatN2Cell(r.total)}</td>
       </tr>
     `).join('');
+
+    const openN2Drill = (el) => {
+      if (!el || typeof window.openN2ComentarioLines !== 'function') return;
+      const comentario = el.dataset.comentario;
+      if (!comentario) return;
+      window.openN2ComentarioLines(comentario, {
+        mes: el.dataset.mes || '',
+        filters: readAnaliseN2Filters()
+      });
+    };
+
+    tbody.onclick = (e) => {
+      const cell = e.target.closest('.n2-cell-drill');
+      if (!cell) return;
+      openN2Drill(cell);
+    };
+    tbody.onkeydown = (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const cell = e.target.closest('.n2-cell-drill');
+      if (!cell) return;
+      e.preventDefault();
+      openN2Drill(cell);
+    };
 
     if (tfoot) {
       tfoot.innerHTML = `<tr>
@@ -2804,11 +2896,15 @@ const UI = (() => {
     }
 
     const mesNames = months.map((m) => N2_MONTH_SHORT[m] || m).join(' · ');
+    const srcTag = data.source === 'ksb1' ? 'KSB1 TSOC' : 'Relatorio (fallback)';
     if (resumo) {
-      resumo.textContent = `${data.rowCount} linhas · ${mesNames} · ordenado pelo maior total`;
+      resumo.textContent = `${data.rowCount} linhas · ${mesNames} · fonte ${srcTag}`;
     }
     if (foot) {
-      foot.textContent = `Valores em milhares (k) · ${months.length} mês(es) · Comentário vazio usa a Natureza (ex.: Salários)`;
+      const src = data.source === 'ksb1'
+        ? 'Fonte: aba KSB1 · clique num valor = Detalhes (linhas KSB1), como no Excel'
+        : 'Fonte ainda é Relatorio — Admin → enviar Excel TSOC completo (com aba KSB1) → Atualizar app';
+      foot.textContent = `Valores em milhares (k) · ${months.length} mês(es) · ${src}`;
     }
   }
 
@@ -2840,6 +2936,8 @@ const UI = (() => {
     renderRanking,
     openDrawer,
     closeDrawer,
+    openAccountLinesScreen,
+    closeAccountLinesScreen,
     renderAdminSlots,
     renderAdminKsb1Slots,
     renderCwidList,

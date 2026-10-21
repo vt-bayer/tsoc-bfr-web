@@ -708,8 +708,23 @@ main {
   font-size: 0.78rem;
 }
 
+/* Contas: não colapsar no flex do detalhe (antes a tabela sumia com altura 0) */
+.detail-ksb1-panel {
+  flex: 0 0 auto;
+  min-height: auto;
+}
+
 .detail-ksb1-panel .detail-table-fill {
-  max-height: min(48vh, 420px);
+  flex: none;
+  min-height: 12rem;
+  max-height: min(52vh, 480px);
+  overflow: auto;
+}
+
+.account-lines-panel .detail-table-fill {
+  flex: none;
+  min-height: 16rem;
+  max-height: min(70vh, 640px);
 }
 
 .entry-hero {
@@ -2741,6 +2756,11 @@ main {
   animation: detailFade 0.2s ease;
 }
 
+/* Extrato da conta fica acima do detalhe do CC/setor */
+.account-lines-screen {
+  z-index: 90;
+}
+
 @keyframes detailFade {
   from { opacity: 0.4; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -4362,6 +4382,20 @@ main {
   background: var(--bayer-capri-soft);
 }
 
+.n2-cell-drill {
+  cursor: pointer;
+}
+.n2-cell-drill:hover,
+.n2-cell-drill:focus-visible {
+  background: var(--bayer-capri-soft) !important;
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(1, 190, 255, 0.45);
+}
+.n2-col-mes.n2-cell-drill {
+  text-decoration: underline;
+  text-decoration-color: rgba(1, 190, 255, 0.35);
+  text-underline-offset: 2px;
+}
 .n2-row-alt td {
   background: #f8fafc;
 }
@@ -4444,7 +4478,7 @@ main {
 }
 
 
-/* Detalhe: contas clicáveis → linhas Contratos */
+/* Detalhe: contas clicáveis → tela Extrato */
 .detail-conta-row {
   cursor: pointer;
   transition: background 0.12s ease;
@@ -4453,10 +4487,6 @@ main {
 .detail-conta-row:focus-visible {
   background: var(--bayer-capri-soft);
   outline: none;
-}
-.detail-conta-row.is-active {
-  background: rgba(1, 190, 255, 0.18);
-  box-shadow: inset 3px 0 0 var(--bayer-capri);
 }
 .detail-conta-rank {
   color: var(--ink-muted);
@@ -4473,23 +4503,6 @@ main {
   font-size: 0.75rem;
   color: var(--ink-muted);
   margin-top: 0.1rem;
-}
-.detail-ksb1-drill {
-  margin-top: 1.1rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(11, 42, 74, 0.1);
-}
-.detail-ksb1-drill-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.65rem;
-}
-.detail-ksb1-drill-head h3 {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--bayer-blue);
 }
 .detail-ksb1-head {
   align-items: flex-start;

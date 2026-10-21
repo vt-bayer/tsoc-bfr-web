@@ -1,5 +1,5 @@
 /* Service worker mínimo — necessário para o Chrome oferecer "Instalar app" */
-const CACHE = 'tsoc-bfr-shell-v54';
+const CACHE = 'tsoc-bfr-shell-v60';
 const SHELL = ['./', './index.html', './instalar.html', './manifest.webmanifest', './assets/bayer-logo.png'];
 
 self.addEventListener('install', (event) => {

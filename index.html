@@ -9,18 +9,18 @@
   <meta name="application-name" content="TSOC BFR 2026">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/app.ico" sizes="any">
-  <link rel="icon" type="image/png" href="assets/bayer-logo.png?v=dash54">
-  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash54">
+  <link rel="icon" type="image/png" href="assets/bayer-logo.png?v=dash60">
+  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash60">
   <link rel="shortcut icon" href="assets/app.ico">
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=dash54">
+  <link rel="stylesheet" href="css/styles.css?v=dash60">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-config.js?v=dash54"></script>
-  <script src="js/supabase-auth.js?v=dash54"></script>
+  <script src="js/supabase-config.js?v=dash60"></script>
+  <script src="js/supabase-auth.js?v=dash60"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 </head>
@@ -30,7 +30,7 @@
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navegação">
       <div class="sidebar-brand">
-        <img class="bayer-logo" src="assets/bayer-logo.png?v=dash54" width="40" height="40" alt="Bayer">
+        <img class="bayer-logo" src="assets/bayer-logo.png?v=dash60" width="40" height="40" alt="Bayer">
         <div class="brand-text">
           <p class="brand-name">Bayer</p>
           <p class="brand-product">TSOC BFR 2026</p>
@@ -774,7 +774,7 @@ CALCULATE(
 
         <!-- Gate de matrícula -->
         <div class="auth-gate" id="admin-gate">
-          <img class="auth-logo" src="assets/bayer-logo.png?v=dash54" width="72" height="72" alt="Bayer">
+          <img class="auth-logo" src="assets/bayer-logo.png?v=dash60" width="72" height="72" alt="Bayer">
           <h2>Entrada do administrador</h2>
           <p>Acesso restrito aos CWIDs autorizados: <strong>CBAIS</strong>, <strong>GPGMS</strong> e <strong>GPUST</strong>.</p>
           <form id="form-admin-login" class="auth-form" autocomplete="on">
@@ -813,8 +813,8 @@ CALCULATE(
 
           <div class="upload-grid" id="upload-grid">
             <article class="upload-card upload-card-relatorio" data-slot="relatorio">
-              <h2>Relatorio (opcional)</h2>
-              <p class="upload-card-sub">Só a aba Relatorio do TSOC (Budget/FC). O ACT sobe pelo cartão Contratos.</p>
+              <h2>Relatorio + KSB1 (TSOC)</h2>
+              <p class="upload-card-sub">Envie o Excel TSOC completo (abas Relatorio + KSB1). Relatorio atualiza o app; KSB1 alimenta a Analise N2.</p>
               <label class="field">
                 <span>Ano preferido (se a planilha tiver mais de um)</span>
                 <select data-upload-year id="upload-year-relatorio" aria-label="Ano preferido do Relatorio"></select>
@@ -823,14 +823,14 @@ CALCULATE(
               <input type="file" accept=".xlsx,.xls,.csv" id="file-relatorio" hidden>
               <div class="upload-actions">
                 <button type="button" class="btn btn-secondary" data-upload="relatorio" id="btn-upload-relatorio">
-                  1. Enviar aba Relatorio
+                  1. Enviar Excel TSOC
                 </button>
                 <button type="button" class="btn btn-primary" id="btn-atualizar-app" disabled title="Aplica a planilha enviada nas telas do app">
                   2. Atualizar app
                 </button>
                 <button type="button" class="btn btn-ghost" id="btn-restaurar-seed">Restaurar dados iniciais</button>
               </div>
-              <p class="admin-msg" id="admin-msg" role="status">Envie o Relatorio e depois clique em Atualizar app.</p>
+              <p class="admin-msg" id="admin-msg" role="status">Envie o TSOC completo e depois clique em Atualizar app. A mensagem deve citar “Analise N2: … linhas KSB1”.</p>
             </article>
 
             <article class="upload-card upload-card-ksb1 is-primary" data-slot="ksb1" id="upload-card-ksb1">
@@ -916,7 +916,7 @@ CALCULATE(
     </div>
   </div>
 
-  <!-- Tela cheia do centro de custo -->
+  <!-- Tela cheia do centro de custo / setor -->
   <section class="detail-screen" id="detail-screen" hidden aria-labelledby="drawer-title">
     <header class="detail-screen-head">
       <div class="detail-screen-head-inner">
@@ -930,6 +930,22 @@ CALCULATE(
       </div>
     </header>
     <div class="detail-screen-body" id="drawer-body"></div>
+  </section>
+
+  <!-- Extrato da conta (tela à parte — não é a aba Contratos) -->
+  <section class="detail-screen account-lines-screen" id="account-lines-screen" hidden aria-labelledby="account-lines-title">
+    <header class="detail-screen-head">
+      <div class="detail-screen-head-inner">
+        <button type="button" class="btn btn-ghost" id="btn-fechar-account-lines">← Voltar ao detalhe</button>
+        <div class="detail-screen-titles">
+          <p class="dash-kicker" id="account-lines-kicker">Extrato da conta</p>
+          <h2 id="account-lines-title">Conta</h2>
+          <p id="account-lines-meta" class="drawer-meta"></p>
+        </div>
+        <div class="detail-head-tags" id="account-lines-tags" aria-hidden="true"></div>
+      </div>
+    </header>
+    <div class="detail-screen-body" id="account-lines-body"></div>
   </section>
 
   <div class="toast" id="toast" hidden role="status"></div>
@@ -969,15 +985,15 @@ CALCULATE(
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
   </script>
-  <script src="js/storage.js?v=dash54"></script>
-  <script src="js/auth.js?v=dash54"></script>
-  <script src="js/parser.js?v=dash54"></script>
-  <script src="js/engine.js?v=dash54"></script>
-  <script src="js/ksb1.js?v=dash54"></script>
-  <script src="js/shared.js?v=dash54"></script>
-  <script src="js/actions.js?v=dash54"></script>
-  <script src="js/copilot.js?v=dash54"></script>
-  <script src="js/ui.js?v=dash54"></script>
-  <script src="js/app.js?v=dash54"></script>
+  <script src="js/storage.js?v=dash60"></script>
+  <script src="js/auth.js?v=dash60"></script>
+  <script src="js/parser.js?v=dash60"></script>
+  <script src="js/engine.js?v=dash60"></script>
+  <script src="js/ksb1.js?v=dash60"></script>
+  <script src="js/shared.js?v=dash60"></script>
+  <script src="js/actions.js?v=dash60"></script>
+  <script src="js/copilot.js?v=dash60"></script>
+  <script src="js/ui.js?v=dash60"></script>
+  <script src="js/app.js?v=dash60"></script>
 </body>
 </html>

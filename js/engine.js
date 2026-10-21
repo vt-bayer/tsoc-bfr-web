@@ -548,7 +548,118 @@ const Engine = (() => {
   }
 
   /**
-   * Pivot Analise N2: Comentário × meses (ACT do Relatorio).
+   * Pivot Analise N2 a partir das linhas KSB1 (como no Excel TSOC).
+   * Linha = Comentario · Colunas = Period 1–12 · Valor = Var.val.in rep.cur. (BRL → k).
+   */
+  function pivotAnaliseN2FromKsb1(ksb1Rows = [], filters = {}) {
+    const unidade = String(filters.unidade || '').trim();
+    const setor = String(filters.setor || '').trim();
+    const natureza = String(filters.natureza || '').trim();
+    const tipoConta = String(filters.tipoConta || '').trim();
+    const cc = String(filters.cc || '').trim().toUpperCase();
+    const busca = String(filters.busca || '').trim().toLowerCase();
+
+    const periodToMonth = (periodo) => {
+      const n = Number(String(periodo || '').replace(/\D/g, ''));
+      if (n >= 1 && n <= 12) return MONTHS[n - 1];
+      return null;
+    };
+
+    const n2Label = (r) => {
+      const c = String(r?.comentario || '').trim();
+      if (c && c !== '-') return c;
+      const f = String(r?.fornecedorNome || r?.fornecedor || '').trim();
+      if (f && f !== '(sem fornecedor)') return f;
+      const t = String(r?.tipoConta || r?.natureza || '').trim();
+      return t || '(sem comentário)';
+    };
+
+    const scoped = (ksb1Rows || []).filter((r) => {
+      if (unidade && r.unidade !== unidade) return false;
+      if (setor && r.setor !== setor) return false;
+      if (natureza && r.natureza !== natureza) return false;
+      if (tipoConta && r.tipoConta !== tipoConta) return false;
+      if (cc) {
+        const rowCc = String(r.cc || '').toUpperCase();
+        if (rowCc !== cc && !rowCc.includes(cc)) return false;
+      }
+      if (busca) {
+        const blob = `${r.comentario || ''} ${r.fornecedorNome || ''} ${r.natureza || ''} ${r.tipoConta || ''} ${r.cc || ''} ${r.conta || ''}`.toLowerCase();
+        if (!blob.includes(busca)) return false;
+      }
+      return true;
+    });
+
+    const byLabel = new Map();
+    scoped.forEach((r) => {
+      const label = n2Label(r);
+      const mes = periodToMonth(r.periodo);
+      if (!mes) return;
+      // Excel mostra BRL; o app trabalha em milhares (k)
+      const valorK = (Number(r.valor) || 0) / 1000;
+      if (!byLabel.has(label)) {
+        byLabel.set(label, {
+          comentario: label,
+          months: Object.fromEntries(MONTHS.map((m) => [m, 0])),
+          total: 0,
+          linhas: 0,
+          ccs: new Set()
+        });
+      }
+      const bag = byLabel.get(label);
+      bag.months[mes] += valorK;
+      bag.linhas += 1;
+      if (r.cc) bag.ccs.add(r.cc);
+    });
+
+    const pivotRows = [...byLabel.values()].map((bag) => {
+      const total = MONTHS.reduce((s, m) => s + (bag.months[m] || 0), 0);
+      return {
+        comentario: bag.comentario,
+        months: bag.months,
+        total,
+        linhas: bag.linhas,
+        ccCount: bag.ccs.size
+      };
+    }).filter((r) => Math.abs(r.total) >= 0.005)
+      .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+
+    const mesCut = filters.mes && MONTHS.includes(filters.mes)
+      ? MONTHS.indexOf(filters.mes)
+      : -1;
+    const activeMonths = MONTHS.filter((m, i) => {
+      if (mesCut >= 0 && i > mesCut) return false;
+      return pivotRows.some((r) => Math.abs(r.months[m] || 0) >= 0.005);
+    });
+    const months = activeMonths.length ? activeMonths : MONTHS.slice(0, Math.max(mesCut + 1, 1));
+
+    const totals = Object.fromEntries(months.map((m) => [
+      m,
+      pivotRows.reduce((s, r) => s + (r.months[m] || 0), 0)
+    ]));
+    const grandTotal = pivotRows.reduce((s, r) => s + r.total, 0);
+    const all = ksb1Rows || [];
+
+    return {
+      rows: pivotRows,
+      months,
+      totals,
+      grandTotal,
+      rowCount: pivotRows.length,
+      lineCount: scoped.length,
+      source: 'ksb1',
+      options: {
+        unidades: [...new Set(all.map((r) => r.unidade).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        setores: [...new Set(all.map((r) => r.setor).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        naturezas: [...new Set(all.map((r) => r.natureza).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        tipoContas: [...new Set(all.map((r) => r.tipoConta).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        ccs: [...new Set(all.map((r) => r.cc).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      }
+    };
+  }
+
+  /**
+   * Pivot Analise N2: Comentário × meses (ACT do Relatorio) — fallback se não houver KSB1 TSOC.
    * filters: { unidade, setor, natureza, tipoConta, cc, busca }
    */
   function pivotAnaliseN2(rows = [], filters = {}) {
@@ -638,6 +749,7 @@ const Engine = (() => {
       grandTotal,
       rowCount: pivotRows.length,
       lineCount: scoped.length,
+      source: 'relatorio',
       options: {
         unidades: [...new Set(all.map((r) => r.unidade).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
         setores: [...new Set(all.map((r) => r.setor).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
@@ -680,6 +792,7 @@ const Engine = (() => {
     classify,
     toCsv,
     analiseN2Label,
-    pivotAnaliseN2
+    pivotAnaliseN2,
+    pivotAnaliseN2FromKsb1
   };
 })();

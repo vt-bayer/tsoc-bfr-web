@@ -259,6 +259,13 @@ const Ksb1 = (() => {
 
   function mapHeaders(rawHeaders) {
     const headers = rawHeaders.map(norm);
+    // No Excel TSOC a aba KSB1 tem "Centro de custo" (setor) E "Cost Center" (MW…).
+    // Prioriza sempre o código inglês para não confundir com o setor.
+    const cc = pickCol(headers, [
+      (h) => h === 'cost center',
+      (h) => h.includes('cost center') && !h.includes('name'),
+      (h) => h === 'centro de custo' && !headers.some((x) => x === 'cost center')
+    ]);
     return {
       ano: pickCol(headers, [
         (h) => h === 'fiscal year' || h === 'exercicio' || h === 'gjahr',
@@ -276,15 +283,31 @@ const Ksb1 = (() => {
         (h) => h === 'cost element name' || h.includes('cost element name'),
         (h) => h.includes('denominacao') && h.includes('elemento')
       ]),
-      cc: pickCol(headers, [
-        (h) => h === 'cost center' || h === 'centro de custo',
-        (h) => h.includes('cost center') && !h.includes('name')
+      cc,
+      // Dimensões enriquecidas da aba KSB1 do Excel TSOC (fonte da Analise N2)
+      comentario: pickCol(headers, [
+        (h) => h === 'comentario' || h === 'comentário'
+      ]),
+      unidade: pickCol(headers, [
+        (h) => h === 'unidade'
+      ]),
+      setor: pickCol(headers, [
+        (h) => h === 'centro de custo',
+        (h) => h === 'setor'
+      ]),
+      natureza: pickCol(headers, [
+        (h) => h === 'natureza'
+      ]),
+      tipoConta: pickCol(headers, [
+        (h) => h === 'tipo de conta'
       ]),
       ccNome: pickCol(headers, [
         (h) => h === 'co object name' || h.includes('co object name'),
         (h) => h.includes('nome') && h.includes('centro')
       ]),
+      // Analise N2 no Excel usa "Soma de Var.val.in rep.cur."
       valor: pickCol(headers, [
+        (h) => h.includes('var.val.in rep') || h.includes('var.val.in.rep') || h.includes('var val in rep'),
         (h) => h.includes('val.in rep') || h.includes('val in rep'),
         (h) => h === 'valor na moeda do objeto' || h.includes('valor na moeda'),
         (h) => h === 'amount in doc curr' || h.includes('amount in doc'),
@@ -318,6 +341,9 @@ const Ksb1 = (() => {
       ]),
       poText: pickCol(headers, [
         (h) => h.includes('purchase order text')
+      ]),
+      postingDate: pickCol(headers, [
+        (h) => h === 'posting date' || h.includes('posting date')
       ])
     };
   }
@@ -444,6 +470,11 @@ const Ksb1 = (() => {
       const texto = cell(line, map.poText) || cell(line, map.texto) || cell(line, map.nome);
       // Classifica só pelo fornecedor (Name of offsetting account) — não pelo nome do arquivo
       const inferred = inferContract(`${fornecedorNome} ${empresa}`);
+      // Analise N2: 1ª coluna Comentario (fornecedor / PO / Salários…). Fallback = offsetting.
+      const comentarioRaw = cell(line, map.comentario);
+      const comentario = (comentarioRaw && comentarioRaw !== '-')
+        ? comentarioRaw
+        : (fornecedorNome || texto || '');
 
       rows.push({
         cc,
@@ -459,6 +490,12 @@ const Ksb1 = (() => {
         valor,
         texto,
         empresa,
+        comentario,
+        unidade: cell(line, map.unidade),
+        setor: cell(line, map.setor),
+        natureza: cell(line, map.natureza),
+        tipoConta: cell(line, map.tipoConta),
+        postingDate: cell(line, map.postingDate),
         area: inferred.area,
         contrato: inferred.contrato,
         contratoKey: inferred.contratoKey,
@@ -478,6 +515,52 @@ const Ksb1 = (() => {
         rowCount: rows.length
       }
     };
+  }
+
+  /**
+   * Extrai a aba KSB1 do Excel TSOC (fonte da Analise N2 / Detalhes1).
+   * Independente do fluxo Contratos (que evita essa aba de propósito).
+   */
+  function parseTsocKsb1ForAnalise(workbook, fileName = 'tsoc.xlsx') {
+    const names = workbook.SheetNames || [];
+    let ksb1Name = names.find((n) => {
+      const x = norm(n);
+      return x === 'ksb1' || x === 'ksb 1';
+    });
+    // Export só da aba: às vezes vem como Planilha1 — aceita a 1ª aba que parecer KSB1
+    if (!ksb1Name) {
+      ksb1Name = names.find((n) => {
+        const x = norm(n);
+        if (x === 'relatorio' || x.includes('relatorio')) return false;
+        if (x === 'contratos' || x.startsWith('contrato')) return false;
+        const matrix = sheetToMatrix(workbook.Sheets[n]);
+        return sheetLooksLikeKsb1(matrix);
+      });
+    }
+    if (!ksb1Name) {
+      return { rows: [], meta: { skipped: true, reason: 'no-ksb1-sheet', fileName } };
+    }
+    const matrix = sheetToMatrix(workbook.Sheets[ksb1Name]);
+    if (!sheetLooksLikeKsb1(matrix)) {
+      return { rows: [], meta: { skipped: true, reason: 'header', sheetName: ksb1Name, fileName } };
+    }
+    const parsed = parseMatrix(matrix, { fileName, sheetName: ksb1Name });
+    return {
+      rows: parsed.rows || [],
+      meta: {
+        ...(parsed.meta || {}),
+        fileName,
+        sheetName: ksb1Name,
+        source: 'tsoc-ksb1',
+        rowCount: (parsed.rows || []).length
+      }
+    };
+  }
+
+  async function parseTsocKsb1File(file) {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: false, sheetStubs: true });
+    return parseTsocKsb1ForAnalise(wb, file.name || 'tsoc.xlsx');
   }
 
   function parseWorkbook(workbook, fileName = 'ksb1.xlsx') {
@@ -1071,6 +1154,8 @@ const Ksb1 = (() => {
     groupRowsByMonth,
     parseFile,
     parseFiles,
+    parseTsocKsb1ForAnalise,
+    parseTsocKsb1File,
     filterRows,
     summary,
     rankFornecedores,

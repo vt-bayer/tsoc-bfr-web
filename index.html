@@ -9,18 +9,18 @@
   <meta name="application-name" content="TSOC BFR 2026">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/app.ico" sizes="any">
-  <link rel="icon" type="image/png" href="assets/bayer-logo.png?v=dash49">
-  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash49">
+  <link rel="icon" type="image/png" href="assets/bayer-logo.png?v=dash50">
+  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash50">
   <link rel="shortcut icon" href="assets/app.ico">
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=dash49">
+  <link rel="stylesheet" href="css/styles.css?v=dash50">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-config.js?v=dash49"></script>
-  <script src="js/supabase-auth.js?v=dash49"></script>
+  <script src="js/supabase-config.js?v=dash50"></script>
+  <script src="js/supabase-auth.js?v=dash50"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 </head>
@@ -30,7 +30,7 @@
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navegação">
       <div class="sidebar-brand">
-        <img class="bayer-logo" src="assets/bayer-logo.png?v=dash49" width="40" height="40" alt="Bayer">
+        <img class="bayer-logo" src="assets/bayer-logo.png?v=dash50" width="40" height="40" alt="Bayer">
         <div class="brand-text">
           <p class="brand-name">Bayer</p>
           <p class="brand-product">TSOC BFR 2026</p>
@@ -508,7 +508,7 @@ CALCULATE(
             <h1 id="titulo-contratos">Contratos</h1>
             <p class="page-sub">
               Acompanhe gap, atraso e compensação dos contratos monitorados.
-              O envio da KSB1 fica na aba <strong>Administrador</strong>.
+              O envio de Contratos fica na aba <strong>Administrador</strong>.
             </p>
           </div>
         </div>
@@ -516,7 +516,7 @@ CALCULATE(
         <section class="dash-card contratos-upload-card" aria-labelledby="titulo-ksb1-guia">
           <div class="dash-card-head">
             <h2 id="titulo-ksb1-guia">Contratos monitorados</h2>
-            <span class="tag tag-plan">KSB1 site</span>
+            <span class="tag tag-plan">CONTRATOS</span>
           </div>
           <ul class="guide-steps contratos-catalog">
             <li><strong>Site Logistic</strong> — FIMATEC · Primary Logistic (GT Soluções)</li>
@@ -525,10 +525,10 @@ CALCULATE(
             <li><strong>Saúde Ocupacional</strong> — Base Sustentabilidade · Milaneli / SSO · GAP (SSMA / segurança do trabalho)</li>
           </ul>
           <p class="detail-panel-sub">
-            Para atualizar: <strong>Administrador</strong> → enviar KSB1 → Atualizar app (KSB1). Atualiza também o ACT do Relatorio.
+            Para atualizar: <strong>Administrador</strong> → Enviar Contratos → Atualizar app (Contratos). Atualiza também o ACT do Relatorio.
             A coluna <strong>Period</strong> define o mês.
           </p>
-          <p class="contratos-status" id="ksb1-status" role="status">Nenhum arquivo KSB1 no histórico deste navegador.</p>
+          <p class="contratos-status" id="ksb1-status" role="status">Nenhum arquivo de Contratos no histórico deste navegador.</p>
           <p class="contratos-pending" id="ksb1-pending" hidden role="status"></p>
           <div class="ksb1-history" id="ksb1-history" hidden>
             <p class="ksb1-history-label">Meses gravados neste navegador</p>
@@ -683,7 +683,7 @@ CALCULATE(
           <div>
             <p class="dash-kicker">Gestão</p>
             <h1 id="titulo-admin">Administrador</h1>
-            <p class="page-sub">Acesso restrito por CWID Bayer. Atualize o app com Relatorio e/ou KSB1.</p>
+            <p class="page-sub">Acesso restrito por CWID Bayer. Atualize o app com Relatorio e/ou Contratos.</p>
           </div>
           <div class="page-actions dash-head-actions" id="admin-session-actions" hidden>
             <button type="button" class="btn btn-ghost" id="btn-admin-logout">Sair</button>
@@ -692,7 +692,7 @@ CALCULATE(
 
         <!-- Gate de matrícula -->
         <div class="auth-gate" id="admin-gate">
-          <img class="auth-logo" src="assets/bayer-logo.png?v=dash49" width="72" height="72" alt="Bayer">
+          <img class="auth-logo" src="assets/bayer-logo.png?v=dash50" width="72" height="72" alt="Bayer">
           <h2>Entrada do administrador</h2>
           <p>Acesso restrito aos CWIDs autorizados: <strong>CBAIS</strong>, <strong>GPGMS</strong> e <strong>GPUST</strong>.</p>
           <form id="form-admin-login" class="auth-form" autocomplete="on">
@@ -709,28 +709,30 @@ CALCULATE(
         <div id="admin-workspace" hidden>
           <div class="admin-intro">
             <p>
-              <strong>Fluxo principal:</strong> envie a <strong>KSB1 uma vez</strong> —
-              ela atualiza o <strong>realizado (ACT)</strong> do Relatorio no app, as linhas de contas
-              e os contratos monitorados. O cartão Relatorio fica opcional para refrescar Budget/FC do Excel.
+              <strong>Fluxo principal:</strong> envie <strong>Contratos</strong> uma vez —
+              atualiza o <strong>realizado (ACT)</strong> do Relatorio, as linhas de contas
+              e os contratos monitorados. O cartão Relatorio é só para Budget/FC da aba Relatorio do Excel TSOC
+              (não confundir com a aba KSB1 desse arquivo).
             </p>
           </div>
 
           <section class="upload-guide" aria-labelledby="titulo-layout-upload">
             <h2 id="titulo-layout-upload">Como atualizar</h2>
             <ol class="upload-steps">
-              <li><strong>KSB1 (recomendado):</strong> extrato do site → Enviar → Atualizar app (KSB1). Atualiza ACT + contratos + linhas.</li>
-              <li><strong>Relatorio (opcional):</strong> só se precisar reimportar Budget/FC da aba Relatorio do Excel.</li>
+              <li><strong>Contratos (recomendado):</strong> extrato do site → Enviar → Atualizar app (Contratos). Atualiza ACT + lançamentos + gap.</li>
+              <li><strong>Relatorio (opcional):</strong> só a aba Relatorio do Excel TSOC, para Budget/FC.</li>
               <li>Opcional: publique o pack para o time ver a mesma base.</li>
             </ol>
             <p class="guide-note">
-              A KSB1 traz <strong>todas</strong> as linhas (não só contratos). Valores vão para o ACT em milhares (k).
+              Neste cartão use o extrato de <strong>Contratos</strong> (ou aba chamada Contratos).
+              A aba <strong>KSB1 do Excel TSOC</strong> não é este envio — evita misturar com o Relatorio.
             </p>
           </section>
 
           <div class="upload-grid" id="upload-grid">
             <article class="upload-card upload-card-relatorio" data-slot="relatorio">
               <h2>Relatorio (opcional)</h2>
-              <p class="upload-card-sub">Reimporta Budget/FC da aba Excel. O ACT (realizado) já sobe pela KSB1.</p>
+              <p class="upload-card-sub">Só a aba Relatorio do TSOC (Budget/FC). O ACT sobe pelo cartão Contratos.</p>
               <label class="field">
                 <span>Ano preferido (se a planilha tiver mais de um)</span>
                 <select data-upload-year id="upload-year-relatorio" aria-label="Ano preferido do Relatorio"></select>
@@ -750,20 +752,20 @@ CALCULATE(
             </article>
 
             <article class="upload-card upload-card-ksb1 is-primary" data-slot="ksb1" id="upload-card-ksb1">
-              <h2>KSB1 (Relatorio ACT + contratos)</h2>
-              <p class="upload-card-sub">Um envio atualiza o realizado do Relatorio, as linhas de contas e os contratos.</p>
+              <h2>Contratos (ACT + lançamentos)</h2>
+              <p class="upload-card-sub">Extrato de contratos do site — não use a aba KSB1 do Excel TSOC neste cartão.</p>
               <ul class="upload-year-list" data-ksb1-list id="ksb1-admin-list"></ul>
               <input type="file" accept=".xlsx,.xls,.csv" id="file-ksb1" hidden multiple>
               <div class="upload-actions">
                 <button type="button" class="btn btn-secondary" id="btn-upload-ksb1">
-                  1. Enviar KSB1 do site
+                  1. Enviar Contratos
                 </button>
-                <button type="button" class="btn btn-primary" id="btn-atualizar-ksb1" disabled title="Grava KSB1, atualiza ACT do Relatorio e contratos">
-                  2. Atualizar app (KSB1)
+                <button type="button" class="btn btn-primary" id="btn-atualizar-ksb1" disabled title="Grava contratos, atualiza ACT do Relatorio e lançamentos">
+                  2. Atualizar app (Contratos)
                 </button>
                 <button type="button" class="btn btn-ghost" id="btn-limpar-ksb1" hidden>Cancelar envio</button>
               </div>
-              <p class="admin-msg" id="ksb1-admin-msg" role="status">Envie a KSB1 e depois clique em Atualizar app (KSB1) — Relatorio + contratos.</p>
+              <p class="admin-msg" id="ksb1-admin-msg" role="status">Envie Contratos e depois clique em Atualizar app (Contratos) — Relatorio ACT + lançamentos.</p>
               <p class="contratos-pending" id="ksb1-pending-admin" hidden role="status"></p>
             </article>
           </div>
@@ -885,15 +887,15 @@ CALCULATE(
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
   </script>
-  <script src="js/storage.js?v=dash49"></script>
-  <script src="js/auth.js?v=dash49"></script>
-  <script src="js/parser.js?v=dash49"></script>
-  <script src="js/engine.js?v=dash49"></script>
-  <script src="js/ksb1.js?v=dash49"></script>
-  <script src="js/shared.js?v=dash49"></script>
-  <script src="js/actions.js?v=dash49"></script>
-  <script src="js/copilot.js?v=dash49"></script>
-  <script src="js/ui.js?v=dash49"></script>
-  <script src="js/app.js?v=dash49"></script>
+  <script src="js/storage.js?v=dash50"></script>
+  <script src="js/auth.js?v=dash50"></script>
+  <script src="js/parser.js?v=dash50"></script>
+  <script src="js/engine.js?v=dash50"></script>
+  <script src="js/ksb1.js?v=dash50"></script>
+  <script src="js/shared.js?v=dash50"></script>
+  <script src="js/actions.js?v=dash50"></script>
+  <script src="js/copilot.js?v=dash50"></script>
+  <script src="js/ui.js?v=dash50"></script>
+  <script src="js/app.js?v=dash50"></script>
 </body>
 </html>

@@ -345,6 +345,8 @@ const Ksb1 = (() => {
     if (/(^| )resumo( |$)|summary|codigos|c[oó]digos fornecedor|contas a pagar|accounts payable/.test(n)) {
       return false;
     }
+    // Aba Relatorio do TSOC nunca entra no fluxo de Contratos
+    if (n === 'relatorio' || n.includes('relatorio')) return false;
     return true;
   }
 
@@ -484,19 +486,28 @@ const Ksb1 = (() => {
     const sheetsUsed = [];
     const sheetMetas = [];
 
-    // Preferência: aba KSB1; senão todas as abas de detalhe
+    // Preferência: aba Contratos (não a aba KSB1 do Excel TSOC, que confunde com Relatorio)
+    const hasRelatorio = names.some((n) => {
+      const x = norm(n);
+      return x === 'relatorio' || x.includes('relatorio');
+    });
     const ordered = [...names].sort((a, b) => {
       const score = (n) => {
         const x = norm(n);
-        if (x === 'ksb1') return 0;
+        if (x === 'contratos' || x.startsWith('contrato')) return 0;
         if (x.startsWith('detalhe')) return 1;
-        return 2;
+        // Em arquivo TSOC (tem Relatorio), a aba KSB1 não é o extrato de contratos
+        if (x === 'ksb1') return hasRelatorio ? 9 : 2;
+        return 3;
       };
       return score(a) - score(b);
     });
 
     for (const name of ordered) {
       if (!isDetailSheetName(name)) continue;
+      const x = norm(name);
+      // Evita puxar a aba KSB1 do workbook TSOC (Relatorio + KSB1 no mesmo arquivo)
+      if (hasRelatorio && x === 'ksb1') continue;
       const matrix = sheetToMatrix(workbook.Sheets[name]);
       if (!sheetLooksLikeKsb1(matrix)) continue;
       const parsed = parseMatrix(matrix, { fileName, sheetName: name });
@@ -507,7 +518,11 @@ const Ksb1 = (() => {
     }
 
     if (!allRows.length) {
-      throw new Error(`Nenhuma aba KSB1 reconhecida em ${fileName}. Procure colunas Cost Center + Val.in rep.cur. + Name of offsetting account.`);
+      throw new Error(
+        hasRelatorio
+          ? `Este parece o Excel TSOC (tem aba Relatorio). Para Contratos, envie o extrato do site ou um arquivo com aba "Contratos" — não a aba KSB1 do TSOC.`
+          : `Nenhuma aba de Contratos reconhecida em ${fileName}. Procure colunas Cost Center + Val.in rep.cur. + Name of offsetting account (ou renomeie a aba para Contratos).`
+      );
     }
 
     return {
@@ -537,7 +552,7 @@ const Ksb1 = (() => {
 
   async function parseFiles(fileList, { onlyMonitored = true } = {}) {
     const files = [...(fileList || [])];
-    if (!files.length) throw new Error('Selecione ao menos um arquivo KSB1 do site (ex.: 09 KSB1 Belford Roxo_Set).');
+    if (!files.length) throw new Error('Selecione ao menos um extrato de Contratos do site (não a aba KSB1 do Excel TSOC).');
     const raw = [];
     const sources = [];
     for (const file of files) {

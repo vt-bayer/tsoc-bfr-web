@@ -132,8 +132,8 @@
     const n = scoped.length;
     const title = label || (list.length === 1 ? list[0] : `${list.length} centros`);
     UI.showToast(n
-      ? `KSB1 · ${title} · ${n.toLocaleString('pt-BR')} linha(s)`
-      : `KSB1 · ${title} · sem linhas — envie o extrato no Admin`);
+      ? `Contratos · ${title} · ${n.toLocaleString('pt-BR')} linha(s)`
+      : `Contratos · ${title} · sem linhas — envie o extrato no Admin`);
 
     requestAnimationFrame(() => {
       document.querySelector('.contratos-lancamentos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -294,7 +294,7 @@
       App.ksb1Rows = App.ksb1HistoryRows;
       App.ksb1Meta = {
         fileName: `${App.ksb1Months.length} mês(es) no histórico`,
-        source: 'histórico KSB1',
+        source: 'histórico Contratos',
         uploadedAt: App.ksb1Months[0]?.uploadedAt || null,
         rowCount: App.ksb1HistoryRows.length,
         total: App.ksb1HistoryRows.reduce((s, r) => s + (r.valor || 0), 0),
@@ -331,14 +331,14 @@
     const files = [...(fileList || [])];
     if (!files.length) return;
     if (!Auth.isLoggedIn()) {
-      UI.showToast('Entre no Admin (CWID) para enviar a KSB1.');
+      UI.showToast('Entre no Admin (CWID) para enviar Contratos.');
       UI.setTab('admin');
       return;
     }
-    // Todas as linhas da KSB1 (não só contratos monitorados) — alimenta Relatorio ACT + Contratos
+    // Todas as linhas do extrato de Contratos (não só monitorados) — alimenta Relatorio ACT + lançamentos
     const parsed = await Ksb1.parseFiles(files, { onlyMonitored: false });
     if (!parsed.rows.length) {
-      throw new Error('Nenhuma linha válida na KSB1 (Cost Center + valor).');
+      throw new Error('Nenhuma linha válida em Contratos (Cost Center + valor).');
     }
     const tagged = Ksb1.tagRowsWithOwnPeriod(parsed.rows, {
       fallbackYear: seedYear(),
@@ -384,11 +384,11 @@
     const span = byMonth.length > 1
       ? `${byMonth.length} meses (${monthLabels[0]} → ${monthLabels[monthLabels.length - 1]})`
       : period.label;
-    UI.showToast(`${span}: ${nAll} linhas KSB1 prontas (atualiza Relatorio + contratos).`);
+    UI.showToast(`${span}: ${nAll} linhas de Contratos prontas (atualiza Relatorio + lançamentos).`);
     UI.setTab('admin');
     const adminMsg = document.getElementById('ksb1-admin-msg');
     if (adminMsg) {
-      adminMsg.textContent = `${span}: ${nAll} linhas (${nMon} de contratos monitorados). Clique em 2. Atualizar app (KSB1) — grava lançamentos e ACT do Relatorio.`;
+      adminMsg.textContent = `${span}: ${nAll} linhas (${nMon} monitoradas). Clique em 2. Atualizar app (Contratos) — grava lançamentos e ACT do Relatorio.`;
     }
   }
 
@@ -428,8 +428,8 @@
       if (!patched.length) continue;
 
       await saveYearDataset(year, patched, {
-        fileName: `KSB1 → Relatorio ACT ${year}`,
-        source: 'KSB1 ACT',
+        fileName: `Contratos → Relatorio ACT ${year}`,
+        source: 'Contratos ACT',
         forecast: 'fc3'
       });
       totalMatched += stats.matched;
@@ -453,7 +453,7 @@
     }
     const pending = App.ksb1Pending;
     if (!pending?.rows?.length) {
-      UI.showToast('Envie um arquivo KSB1 antes de atualizar.');
+      UI.showToast('Envie um arquivo de Contratos antes de atualizar.');
       return;
     }
     const { byMonth, meta, fileName, uploadedAt, period } = pending;
@@ -525,8 +525,8 @@
       Storage.setPreferredYear(actYear);
       await rebuildDataset({ year: actYear });
     } catch (err) {
-      console.error('KSB1 → Relatorio ACT:', err);
-      UI.showToast('KSB1 gravada, mas falhou ao atualizar o ACT do Relatorio.');
+      console.error('Contratos → Relatorio ACT:', err);
+      UI.showToast('Contratos gravados, mas falhou ao atualizar o ACT do Relatorio.');
     }
 
     const slotList = await Storage.listSlots();
@@ -539,9 +539,9 @@
       : '';
     const adminMsg = document.getElementById('ksb1-admin-msg');
     if (adminMsg) {
-      adminMsg.textContent = `App atualizado com KSB1: ${span} · ${monthsNow.length} mês(es) no histórico${actTxt}.`;
+      adminMsg.textContent = `App atualizado com Contratos: ${span} · ${monthsNow.length} mês(es) no histórico${actTxt}.`;
     }
-    UI.showToast(`App atualizado (KSB1 + Relatorio): ${span}${actTxt}`);
+    UI.showToast(`App atualizado (Contratos + Relatorio): ${span}${actTxt}`);
     UI.setTab('admin');
   }
 
@@ -636,7 +636,7 @@
 
   async function clearKsb1Month() {
     if (!Auth.isLoggedIn()) {
-      UI.showToast('Entre no Admin (CWID) para remover um mês da KSB1.');
+      UI.showToast('Entre no Admin (CWID) para remover um mês de Contratos.');
       return;
     }
     if (App.ksb1Pending) {

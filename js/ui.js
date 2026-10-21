@@ -671,7 +671,7 @@ const UI = (() => {
       : (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const slice = (pack.rows || []).slice(0, 200);
     if (!slice.length) {
-      return '<tr><td colspan="7" class="empty-state">Sem linhas KSB1 para estes centros. Envie o extrato no Admin → Atualizar app (KSB1).</td></tr>';
+      return '<tr><td colspan="7" class="empty-state">Sem linhas de Contratos para estes centros. Envie o extrato no Admin → Atualizar app (Contratos).</td></tr>';
     }
     return slice.map((r) => `
       <tr>
@@ -723,8 +723,8 @@ const UI = (() => {
     ].join('');
     const linesHtml = buildDetailLinesHtml(linesPack);
     const linesCountLabel = linesPack.rows.length > 200
-      ? `Exibindo 200 de ${linesPack.rows.length.toLocaleString('pt-BR')} linhas (KSB1)`
-      : `${linesPack.rows.length.toLocaleString('pt-BR')} linha(s) (KSB1)`;
+      ? `Exibindo 200 de ${linesPack.rows.length.toLocaleString('pt-BR')} linhas (Contratos)`
+      : `${linesPack.rows.length.toLocaleString('pt-BR')} linha(s) (Contratos)`;
     const linesTotalLabel = typeof Ksb1 !== 'undefined' && Ksb1.formatMoney
       ? Ksb1.formatMoney(linesPack.total)
       : Engine.formatK(linesPack.total);
@@ -834,7 +834,7 @@ const UI = (() => {
               <h2>Contas contábeis</h2>
               <span class="tag tag-gap">LINHAS</span>
             </div>
-            <p class="detail-panel-sub">Linhas diretas da KSB1 · filtre pela natureza do gasto</p>
+            <p class="detail-panel-sub">Linhas diretas de Contratos · filtre pela natureza do gasto</p>
           </div>
           <label class="field field-inline detail-natureza-filter">
             <span>Natureza do gasto</span>
@@ -878,8 +878,8 @@ const UI = (() => {
         if (tbody) tbody.innerHTML = buildDetailLinesHtml(pack);
         if (foot) {
           const countLabel = pack.rows.length > 200
-            ? `Exibindo 200 de ${pack.rows.length.toLocaleString('pt-BR')} linhas (KSB1)`
-            : `${pack.rows.length.toLocaleString('pt-BR')} linha(s) (KSB1)`;
+            ? `Exibindo 200 de ${pack.rows.length.toLocaleString('pt-BR')} linhas (Contratos)`
+            : `${pack.rows.length.toLocaleString('pt-BR')} linha(s) (Contratos)`;
           const totalLabel = typeof Ksb1 !== 'undefined' && Ksb1.formatMoney
             ? Ksb1.formatMoney(pack.total)
             : Engine.formatK(pack.total);
@@ -1986,7 +1986,7 @@ const UI = (() => {
     const monthsAsc = [...(months || [])].sort((a, b) => (a.year - b.year) || (a.month - b.month));
     if (!monthsAsc.length) {
       card?.classList.remove('is-loaded');
-      list.innerHTML = '<li class="upload-year-empty">Nenhuma KSB1 enviada ainda</li>';
+      list.innerHTML = '<li class="upload-year-empty">Nenhum arquivo de Contratos enviado ainda</li>';
       return;
     }
     card?.classList.add('is-loaded');
@@ -2269,7 +2269,7 @@ const UI = (() => {
       if (status) {
         status.textContent = pending
           ? 'Arquivo lido — clique em Atualizar contratos para gravar no histórico.'
-          : 'Nenhum arquivo KSB1 no histórico deste navegador.';
+          : 'Nenhum arquivo de Contratos no histórico deste navegador.';
       }
       if (kpis) kpis.hidden = true;
       const monthGapsEmpty = $('#ksb1-month-gaps');

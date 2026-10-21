@@ -9,18 +9,18 @@
   <meta name="application-name" content="TSOC BFR 2026">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/app.ico" sizes="any">
-  <link rel="icon" type="image/png" href="assets/bayer-logo.png?v=dash52">
-  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash52">
+  <link rel="icon" type="image/png" href="assets/bayer-logo.png?v=dash53">
+  <link rel="apple-touch-icon" href="assets/bayer-logo.png?v=dash53">
   <link rel="shortcut icon" href="assets/app.ico">
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=dash52">
+  <link rel="stylesheet" href="css/styles.css?v=dash53">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-config.js?v=dash52"></script>
-  <script src="js/supabase-auth.js?v=dash52"></script>
+  <script src="js/supabase-config.js?v=dash53"></script>
+  <script src="js/supabase-auth.js?v=dash53"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 </head>
@@ -30,7 +30,7 @@
   <div class="app-shell">
     <aside class="sidebar" aria-label="Navegação">
       <div class="sidebar-brand">
-        <img class="bayer-logo" src="assets/bayer-logo.png?v=dash52" width="40" height="40" alt="Bayer">
+        <img class="bayer-logo" src="assets/bayer-logo.png?v=dash53" width="40" height="40" alt="Bayer">
         <div class="brand-text">
           <p class="brand-name">Bayer</p>
           <p class="brand-product">TSOC BFR 2026</p>
@@ -507,61 +507,78 @@ CALCULATE(
 
       <!-- ANALISE N2 -->
       <section id="tab-analise-n2" class="tab-panel" aria-labelledby="titulo-analise-n2" hidden>
-        <div class="dash-page-head">
+        <div class="dash-page-head n2-page-head">
           <div>
-            <p class="dash-kicker">Pivot · Relatorio</p>
+            <p class="dash-kicker">Como no Excel TSOC</p>
             <h1 id="titulo-analise-n2">Analise N2</h1>
-            <p class="page-sub">
-              Comentário × período (ACT) — mesma lógica da aba Analise N2 do Excel TSOC. Valores em milhares (k).
-            </p>
+            <p class="page-sub">Realizado (ACT) por comentário, mês a mês — valores em milhares (k).</p>
           </div>
           <div class="page-actions dash-head-actions">
             <button type="button" class="btn btn-ghost" id="btn-limpar-filtros-n2">Limpar filtros</button>
           </div>
         </div>
 
-        <div class="filters filters-compact n2-filters" id="filtros-analise-n2" role="search" aria-label="Filtros Analise N2">
-          <label class="field">
-            <span>Setor</span>
-            <select id="filtro-n2-setor"><option value="">(Tudo)</option></select>
-          </label>
-          <label class="field">
-            <span>Natureza</span>
-            <select id="filtro-n2-natureza"><option value="">(Tudo)</option></select>
-          </label>
-          <label class="field">
-            <span>Unidade</span>
-            <select id="filtro-n2-unidade"><option value="">(Tudo)</option></select>
-          </label>
-          <label class="field">
-            <span>Tipo de conta</span>
-            <select id="filtro-n2-tipo-conta"><option value="">(Tudo)</option></select>
-          </label>
-          <label class="field">
-            <span>Cost Center</span>
-            <select id="filtro-n2-cc"><option value="">(Tudo)</option></select>
-          </label>
-          <label class="field field-grow">
-            <span>Busca</span>
-            <input type="search" id="filtro-n2-busca" placeholder="Comentário, conta, CC…" autocomplete="off">
-          </label>
+        <div class="n2-kpi-row" id="n2-kpi-row" aria-label="Resumo do recorte">
+          <article class="n2-kpi">
+            <span class="n2-kpi-label">Total ACT</span>
+            <strong id="n2-kpi-total">—</strong>
+          </article>
+          <article class="n2-kpi">
+            <span class="n2-kpi-label">Comentários</span>
+            <strong id="n2-kpi-linhas">—</strong>
+          </article>
+          <article class="n2-kpi n2-kpi-wide">
+            <span class="n2-kpi-label">Maior linha</span>
+            <strong id="n2-kpi-top" class="n2-kpi-top">—</strong>
+          </article>
         </div>
 
-        <p class="nl-summary" id="n2-resumo" aria-live="polite"></p>
-
-        <section class="panel n2-panel" aria-labelledby="titulo-n2-pivot">
-          <div class="panel-head">
-            <h2 id="titulo-n2-pivot">Soma de ACT por comentário</h2>
-            <p>Colunas = período (mês). Linhas = Comentário (se vazio, usa a Natureza).</p>
+        <div class="n2-filters" id="filtros-analise-n2" role="search" aria-label="Filtros Analise N2">
+          <p class="n2-filters-title">Filtros</p>
+          <div class="n2-filters-grid">
+            <label class="field">
+              <span>Setor</span>
+              <select id="filtro-n2-setor"><option value="">Tudo</option></select>
+            </label>
+            <label class="field">
+              <span>Natureza</span>
+              <select id="filtro-n2-natureza"><option value="">Tudo</option></select>
+            </label>
+            <label class="field">
+              <span>Unidade</span>
+              <select id="filtro-n2-unidade"><option value="">Tudo</option></select>
+            </label>
+            <label class="field">
+              <span>Tipo de conta</span>
+              <select id="filtro-n2-tipo-conta"><option value="">Tudo</option></select>
+            </label>
+            <label class="field">
+              <span>Cost Center</span>
+              <select id="filtro-n2-cc"><option value="">Tudo</option></select>
+            </label>
+            <label class="field field-grow">
+              <span>Busca</span>
+              <input type="search" id="filtro-n2-busca" placeholder="Comentário, conta, CC…" autocomplete="off">
+            </label>
           </div>
-          <div class="table-wrap table-wrap-tall n2-table-wrap">
-            <table class="data-table data-table-compact n2-pivot" id="tabela-analise-n2">
+        </div>
+
+        <section class="n2-board" aria-labelledby="titulo-n2-pivot">
+          <div class="n2-board-head">
+            <div>
+              <h2 id="titulo-n2-pivot">ACT por comentário</h2>
+              <p id="n2-resumo" class="n2-board-sub">Carregando…</p>
+            </div>
+            <span class="n2-unit-badge">milhares (k)</span>
+          </div>
+          <div class="n2-table-wrap">
+            <table class="n2-pivot" id="tabela-analise-n2">
               <thead id="thead-analise-n2"></thead>
               <tbody id="tbody-analise-n2"></tbody>
               <tfoot id="tfoot-analise-n2"></tfoot>
             </table>
           </div>
-          <p class="table-footnote" id="n2-footnote">Valores em milhares (k)</p>
+          <p class="table-footnote" id="n2-footnote">Colunas = meses do ano · Linha = Comentário (ou Natureza, se o comentário estiver vazio)</p>
         </section>
       </section>
 
@@ -757,7 +774,7 @@ CALCULATE(
 
         <!-- Gate de matrícula -->
         <div class="auth-gate" id="admin-gate">
-          <img class="auth-logo" src="assets/bayer-logo.png?v=dash52" width="72" height="72" alt="Bayer">
+          <img class="auth-logo" src="assets/bayer-logo.png?v=dash53" width="72" height="72" alt="Bayer">
           <h2>Entrada do administrador</h2>
           <p>Acesso restrito aos CWIDs autorizados: <strong>CBAIS</strong>, <strong>GPGMS</strong> e <strong>GPUST</strong>.</p>
           <form id="form-admin-login" class="auth-form" autocomplete="on">
@@ -952,15 +969,15 @@ CALCULATE(
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
   </script>
-  <script src="js/storage.js?v=dash52"></script>
-  <script src="js/auth.js?v=dash52"></script>
-  <script src="js/parser.js?v=dash52"></script>
-  <script src="js/engine.js?v=dash52"></script>
-  <script src="js/ksb1.js?v=dash52"></script>
-  <script src="js/shared.js?v=dash52"></script>
-  <script src="js/actions.js?v=dash52"></script>
-  <script src="js/copilot.js?v=dash52"></script>
-  <script src="js/ui.js?v=dash52"></script>
-  <script src="js/app.js?v=dash52"></script>
+  <script src="js/storage.js?v=dash53"></script>
+  <script src="js/auth.js?v=dash53"></script>
+  <script src="js/parser.js?v=dash53"></script>
+  <script src="js/engine.js?v=dash53"></script>
+  <script src="js/ksb1.js?v=dash53"></script>
+  <script src="js/shared.js?v=dash53"></script>
+  <script src="js/actions.js?v=dash53"></script>
+  <script src="js/copilot.js?v=dash53"></script>
+  <script src="js/ui.js?v=dash53"></script>
+  <script src="js/app.js?v=dash53"></script>
 </body>
 </html>

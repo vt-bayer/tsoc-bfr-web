@@ -2567,7 +2567,13 @@ const UI = (() => {
       .replace(/"/g, '&quot;');
   }
 
-  function fillN2Select(select, values, placeholder = '(Tudo)') {
+  const N2_MONTH_SHORT = {
+    jan: 'Jan', fev: 'Fev', mar: 'Mar', abr: 'Abr',
+    mai: 'Mai', jun: 'Jun', jul: 'Jul', ago: 'Ago',
+    set: 'Set', out: 'Out', nov: 'Nov', dez: 'Dez'
+  };
+
+  function fillN2Select(select, values, placeholder = 'Tudo') {
     if (!select) return;
     const cur = select.value;
     select.innerHTML = '';
@@ -2605,6 +2611,30 @@ const UI = (() => {
     if (busca) busca.value = '';
   }
 
+  /** Número limpo na grade (sem repetir “k” em cada célula). */
+  function formatN2Cell(value) {
+    const n = Number(value) || 0;
+    if (Math.abs(n) < 0.005) return '';
+    const abs = Math.abs(n);
+    let body;
+    if (abs >= 100) body = abs.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+    else if (abs >= 10) body = abs.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+    else body = abs.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+    const sign = n < 0 ? '−' : '';
+    return `${sign}${body}`;
+  }
+
+  function n2HeatClass(value, maxAbs) {
+    const n = Number(value) || 0;
+    if (Math.abs(n) < 0.005 || !maxAbs) return '';
+    const ratio = Math.abs(n) / maxAbs;
+    if (n < 0) return ratio > 0.35 ? 'n2-neg-strong' : 'n2-neg';
+    if (ratio > 0.55) return 'n2-heat-3';
+    if (ratio > 0.25) return 'n2-heat-2';
+    if (ratio > 0.08) return 'n2-heat-1';
+    return '';
+  }
+
   function renderAnaliseN2(pack) {
     const data = pack || { rows: [], months: [], totals: {}, grandTotal: 0, options: {} };
     const opts = data.options || {};
@@ -2620,48 +2650,83 @@ const UI = (() => {
     const tfoot = $('#tfoot-analise-n2');
     const resumo = $('#n2-resumo');
     const foot = $('#n2-footnote');
+    const kpiTotal = $('#n2-kpi-total');
+    const kpiLinhas = $('#n2-kpi-linhas');
+    const kpiTop = $('#n2-kpi-top');
 
     if (thead) {
       thead.innerHTML = `<tr>
-        <th class="n2-sticky">Comentário</th>
-        ${months.map((m, i) => `<th class="num" title="${escapeHtml(Engine.MONTH_LABELS[m] || m)}">${i + 1}</th>`).join('')}
-        <th class="num">Total Geral</th>
+        <th class="n2-sticky n2-col-label">Comentário</th>
+        ${months.map((m, i) => `
+          <th class="num n2-col-mes" title="${escapeHtml(Engine.MONTH_LABELS[m] || m)}">
+            <span class="n2-mes-name">${escapeHtml(N2_MONTH_SHORT[m] || m)}</span>
+            <span class="n2-mes-num">${i + 1}</span>
+          </th>
+        `).join('')}
+        <th class="num n2-col-total">Total</th>
       </tr>`;
     }
 
+    const emptyKpis = () => {
+      if (kpiTotal) kpiTotal.textContent = '—';
+      if (kpiLinhas) kpiLinhas.textContent = '—';
+      if (kpiTop) kpiTop.textContent = '—';
+    };
+
     if (!tbody) return;
     if (!(data.rows || []).length) {
-      tbody.innerHTML = `<tr><td colspan="${months.length + 2}" class="empty-state">Sem linhas para este recorte. Ajuste os filtros ou atualize o Relatorio / Contratos no Admin.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="${Math.max(months.length + 2, 3)}" class="empty-state">Sem linhas neste recorte. Ajuste os filtros ou atualize os dados no Admin.</td></tr>`;
       if (tfoot) tfoot.innerHTML = '';
       if (resumo) resumo.textContent = 'Nenhuma linha no pivot.';
-      if (foot) foot.textContent = 'Valores em milhares (k)';
+      if (foot) foot.textContent = 'Colunas = meses · Valores em milhares (k)';
+      emptyKpis();
       return;
     }
 
-    tbody.innerHTML = data.rows.map((r) => `
-      <tr>
-        <td class="n2-sticky" title="${escapeHtml(r.comentario)}">${escapeHtml(r.comentario)}</td>
+    const maxAbs = Math.max(
+      ...data.rows.flatMap((r) => months.map((m) => Math.abs(r.months[m] || 0))),
+      0.001
+    );
+
+    tbody.innerHTML = data.rows.map((r, idx) => `
+      <tr class="${idx % 2 ? 'n2-row-alt' : ''}">
+        <td class="n2-sticky n2-col-label" title="${escapeHtml(r.comentario)}">
+          <span class="n2-label-text">${escapeHtml(r.comentario)}</span>
+        </td>
         ${months.map((m) => {
           const v = r.months[m] || 0;
-          return `<td class="num ${Math.abs(v) < 0.005 ? 'n2-zero' : ''}">${Math.abs(v) < 0.005 ? '' : Engine.formatK(v)}</td>`;
+          const heat = n2HeatClass(v, maxAbs);
+          const txt = formatN2Cell(v);
+          return `<td class="num n2-col-mes ${heat} ${txt ? '' : 'n2-empty'}">${txt || '·'}</td>`;
         }).join('')}
-        <td class="num"><strong>${Engine.formatK(r.total)}</strong></td>
+        <td class="num n2-col-total">${formatN2Cell(r.total)}</td>
       </tr>
     `).join('');
 
     if (tfoot) {
       tfoot.innerHTML = `<tr>
-        <th class="n2-sticky">Total Geral</th>
-        ${months.map((m) => `<th class="num">${Engine.formatK(data.totals?.[m] || 0)}</th>`).join('')}
-        <th class="num">${Engine.formatK(data.grandTotal || 0)}</th>
+        <th class="n2-sticky n2-col-label">Total geral</th>
+        ${months.map((m) => `<th class="num n2-col-mes">${formatN2Cell(data.totals?.[m] || 0)}</th>`).join('')}
+        <th class="num n2-col-total">${formatN2Cell(data.grandTotal || 0)}</th>
       </tr>`;
     }
 
+    const top = data.rows[0];
+    if (kpiTotal) kpiTotal.textContent = Engine.formatK(data.grandTotal || 0);
+    if (kpiLinhas) kpiLinhas.textContent = String(data.rowCount || 0);
+    if (kpiTop) {
+      kpiTop.textContent = top
+        ? `${top.comentario} · ${Engine.formatK(top.total)}`
+        : '—';
+      kpiTop.title = top?.comentario || '';
+    }
+
+    const mesNames = months.map((m) => N2_MONTH_SHORT[m] || m).join(' · ');
     if (resumo) {
-      resumo.textContent = `${data.rowCount.toLocaleString('pt-BR')} comentário(s) · ${Number(data.lineCount || 0).toLocaleString('pt-BR')} linha(s) do Relatorio · Total ${Engine.formatK(data.grandTotal || 0)}`;
+      resumo.textContent = `${data.rowCount} linhas · ${mesNames} · ordenado pelo maior total`;
     }
     if (foot) {
-      foot.textContent = `Valores em milhares (k) · Períodos ${months.map((_, i) => i + 1).join(', ')} · Exibindo ${data.rows.length.toLocaleString('pt-BR')} linhas`;
+      foot.textContent = `Valores em milhares (k) · ${months.length} mês(es) · Comentário vazio usa a Natureza (ex.: Salários)`;
     }
   }
 

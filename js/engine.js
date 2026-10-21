@@ -538,6 +538,121 @@ const Engine = (() => {
     return lines.join('\n');
   }
 
+  /** Rótulo de linha da Analise N2 (Comentário; se vazio, usa Natureza/tipo). */
+  function analiseN2Label(row) {
+    const c = String(row?.comentario || '').trim();
+    if (c && c !== '-') return c;
+    const tipo = String(row?.tipo || '').trim();
+    if (tipo) return tipo;
+    return String(row?.contaDesc || row?.conta || '(sem comentário)').trim();
+  }
+
+  /**
+   * Pivot Analise N2: Comentário × meses (ACT do Relatorio).
+   * filters: { unidade, setor, natureza, tipoConta, cc, busca }
+   */
+  function pivotAnaliseN2(rows = [], filters = {}) {
+    const unidade = String(filters.unidade || '').trim();
+    const setor = String(filters.setor || '').trim();
+    const natureza = String(filters.natureza || '').trim();
+    const tipoConta = String(filters.tipoConta || '').trim();
+    const cc = String(filters.cc || '').trim().toUpperCase();
+    const busca = String(filters.busca || '').trim().toLowerCase();
+
+    const scoped = (rows || []).filter((r) => {
+      if (unidade && r.unidade !== unidade) return false;
+      if (setor && r.setor !== setor) return false;
+      if (natureza && r.tipo !== natureza) return false;
+      if (tipoConta && String(r.grupo || '') !== tipoConta) return false;
+      if (cc) {
+        const rowCc = String(r.cc || '').toUpperCase();
+        if (rowCc !== cc && !rowCc.includes(cc)) return false;
+      }
+      if (busca) {
+        const blob = `${r.comentario || ''} ${r.tipo || ''} ${r.cc || ''} ${r.conta || ''} ${r.contaDesc || ''}`.toLowerCase();
+        if (!blob.includes(busca)) return false;
+      }
+      return true;
+    });
+
+    const byLabel = new Map();
+    scoped.forEach((r) => {
+      const label = analiseN2Label(r);
+      if (!byLabel.has(label)) {
+        byLabel.set(label, {
+          comentario: label,
+          months: Object.fromEntries(MONTHS.map((m) => [m, 0])),
+          total: 0,
+          linhas: 0,
+          ccs: new Set()
+        });
+      }
+      const bag = byLabel.get(label);
+      MONTHS.forEach((m) => {
+        bag.months[m] += Number(r.act?.[m]) || 0;
+      });
+      bag.linhas += 1;
+      if (r.cc) bag.ccs.add(r.cc);
+    });
+
+    const pivotRows = [...byLabel.values()].map((bag) => {
+      const total = MONTHS.reduce((s, m) => s + (bag.months[m] || 0), 0);
+      return {
+        comentario: bag.comentario,
+        months: bag.months,
+        total,
+        linhas: bag.linhas,
+        ccCount: bag.ccs.size
+      };
+    }).filter((r) => Math.abs(r.total) >= 0.005)
+      .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+
+    // Meses com algum valor no recorte (ou até o mês do filtro global se informado)
+    const mesCut = filters.mes && MONTHS.includes(filters.mes)
+      ? MONTHS.indexOf(filters.mes)
+      : -1;
+    const activeMonths = MONTHS.filter((m, i) => {
+      if (mesCut >= 0 && i > mesCut) return false;
+      return pivotRows.some((r) => Math.abs(r.months[m] || 0) >= 0.005);
+    });
+    const months = activeMonths.length ? activeMonths : MONTHS.slice(0, Math.max(mesCut + 1, 1));
+
+    const totals = Object.fromEntries(months.map((m) => [
+      m,
+      pivotRows.reduce((s, r) => s + (r.months[m] || 0), 0)
+    ]));
+    const grandTotal = pivotRows.reduce((s, r) => s + r.total, 0);
+
+    const naturezas = [...new Set(scoped.map((r) => r.tipo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const tipoContas = [...new Set(scoped.map((r) => r.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const setores = [...new Set(scoped.map((r) => r.setor).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const unidades = [...new Set(scoped.map((r) => r.unidade).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const ccs = [...new Set(scoped.map((r) => r.cc).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    // Options from full dataset (for filter dropdowns) when provided
+    const all = rows || [];
+    return {
+      rows: pivotRows,
+      months,
+      totals,
+      grandTotal,
+      rowCount: pivotRows.length,
+      lineCount: scoped.length,
+      options: {
+        unidades: [...new Set(all.map((r) => r.unidade).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        setores: [...new Set(all.map((r) => r.setor).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        naturezas: [...new Set(all.map((r) => r.tipo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        tipoContas: [...new Set(all.map((r) => r.grupo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        ccs: [...new Set(all.map((r) => r.cc).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        scopedSetores: setores,
+        scopedNaturezas: naturezas,
+        scopedTipoContas: tipoContas,
+        scopedUnidades: unidades,
+        scopedCcs: ccs
+      }
+    };
+  }
+
   return {
     MONTHS,
     MONTH_LABELS,
@@ -563,6 +678,8 @@ const Engine = (() => {
     formatK,
     formatPct,
     classify,
-    toCsv
+    toCsv,
+    analiseN2Label,
+    pivotAnaliseN2
   };
 })();

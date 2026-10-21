@@ -955,6 +955,13 @@
     UI.renderRanking(sectorList);
     UI.renderHomeSnapshot(App.rows);
     refreshOverviewChart();
+    refreshAnaliseN2();
+  }
+
+  function refreshAnaliseN2() {
+    const filters = UI.readAnaliseN2Filters();
+    const pack = Engine.pivotAnaliseN2(App.rows || [], filters);
+    UI.renderAnaliseN2(pack);
   }
 
   function setYearLabels(year) {
@@ -1390,10 +1397,16 @@
 
   function bindEvents() {
     document.querySelectorAll('.nav-btn').forEach((btn) => {
-      btn.addEventListener('click', () => UI.setTab(btn.dataset.tab));
+      btn.addEventListener('click', () => {
+        UI.setTab(btn.dataset.tab);
+        if (btn.dataset.tab === 'analise-n2') refreshAnaliseN2();
+      });
     });
     document.querySelectorAll('[data-goto]').forEach((btn) => {
-      btn.addEventListener('click', () => UI.setTab(btn.dataset.goto));
+      btn.addEventListener('click', () => {
+        UI.setTab(btn.dataset.goto);
+        if (btn.dataset.goto === 'analise-n2') refreshAnaliseN2();
+      });
     });
 
     const filterIds = [
@@ -1408,6 +1421,15 @@
         UI.state.rankingLimit = 10;
         refreshDetails();
       });
+    });
+
+    ['filtro-n2-setor', 'filtro-n2-natureza', 'filtro-n2-unidade', 'filtro-n2-tipo-conta', 'filtro-n2-cc'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('change', refreshAnaliseN2);
+    });
+    document.getElementById('filtro-n2-busca')?.addEventListener('input', refreshAnaliseN2);
+    document.getElementById('btn-limpar-filtros-n2')?.addEventListener('click', () => {
+      UI.clearAnaliseN2Filters();
+      refreshAnaliseN2();
     });
 
     document.getElementById('filtro-ano').addEventListener('change', (e) => {

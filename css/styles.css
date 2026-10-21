@@ -4138,3 +4138,61 @@ main {
     max-width: none;
   }
 }
+
+/* —— Analise N2 pivot —— */
+.n2-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface, #f4f7fb);
+  border-radius: 10px;
+}
+.n2-filters .field-grow {
+  flex: 1 1 12rem;
+  min-width: 10rem;
+}
+.n2-table-wrap {
+  overflow: auto;
+  max-height: min(70vh, 640px);
+}
+.n2-pivot {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 100%;
+}
+.n2-pivot th,
+.n2-pivot td {
+  white-space: nowrap;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.55rem;
+}
+.n2-pivot .n2-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+  max-width: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 4px 0 8px -6px rgba(11, 42, 74, 0.35);
+}
+.n2-pivot thead .n2-sticky,
+.n2-pivot tfoot .n2-sticky {
+  z-index: 3;
+  background: #eef3f8;
+}
+.n2-pivot tfoot th {
+  background: #eef3f8;
+  font-weight: 700;
+}
+.n2-pivot .n2-zero {
+  color: transparent;
+}
+.n2-panel .panel-head p {
+  margin: 0.15rem 0 0;
+  color: rgba(11, 42, 74, 0.65);
+  font-size: 0.85rem;
+}
+

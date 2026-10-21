@@ -2567,6 +2567,104 @@ const UI = (() => {
       .replace(/"/g, '&quot;');
   }
 
+  function fillN2Select(select, values, placeholder = '(Tudo)') {
+    if (!select) return;
+    const cur = select.value;
+    select.innerHTML = '';
+    const opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = placeholder;
+    select.appendChild(opt0);
+    (values || []).forEach((v) => {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = v;
+      select.appendChild(opt);
+    });
+    if (cur && [...select.options].some((o) => o.value === cur)) select.value = cur;
+  }
+
+  function readAnaliseN2Filters() {
+    return {
+      setor: $('#filtro-n2-setor')?.value || '',
+      natureza: $('#filtro-n2-natureza')?.value || '',
+      unidade: $('#filtro-n2-unidade')?.value || '',
+      tipoConta: $('#filtro-n2-tipo-conta')?.value || '',
+      cc: $('#filtro-n2-cc')?.value || '',
+      busca: $('#filtro-n2-busca')?.value || '',
+      mes: $('#filtro-mes')?.value || readFilters().mes
+    };
+  }
+
+  function clearAnaliseN2Filters() {
+    ['filtro-n2-setor', 'filtro-n2-natureza', 'filtro-n2-unidade', 'filtro-n2-tipo-conta', 'filtro-n2-cc'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const busca = document.getElementById('filtro-n2-busca');
+    if (busca) busca.value = '';
+  }
+
+  function renderAnaliseN2(pack) {
+    const data = pack || { rows: [], months: [], totals: {}, grandTotal: 0, options: {} };
+    const opts = data.options || {};
+    fillN2Select($('#filtro-n2-unidade'), opts.unidades);
+    fillN2Select($('#filtro-n2-setor'), opts.setores);
+    fillN2Select($('#filtro-n2-natureza'), opts.naturezas);
+    fillN2Select($('#filtro-n2-tipo-conta'), opts.tipoContas);
+    fillN2Select($('#filtro-n2-cc'), opts.ccs);
+
+    const months = data.months || [];
+    const thead = $('#thead-analise-n2');
+    const tbody = $('#tbody-analise-n2');
+    const tfoot = $('#tfoot-analise-n2');
+    const resumo = $('#n2-resumo');
+    const foot = $('#n2-footnote');
+
+    if (thead) {
+      thead.innerHTML = `<tr>
+        <th class="n2-sticky">Comentário</th>
+        ${months.map((m, i) => `<th class="num" title="${escapeHtml(Engine.MONTH_LABELS[m] || m)}">${i + 1}</th>`).join('')}
+        <th class="num">Total Geral</th>
+      </tr>`;
+    }
+
+    if (!tbody) return;
+    if (!(data.rows || []).length) {
+      tbody.innerHTML = `<tr><td colspan="${months.length + 2}" class="empty-state">Sem linhas para este recorte. Ajuste os filtros ou atualize o Relatorio / Contratos no Admin.</td></tr>`;
+      if (tfoot) tfoot.innerHTML = '';
+      if (resumo) resumo.textContent = 'Nenhuma linha no pivot.';
+      if (foot) foot.textContent = 'Valores em milhares (k)';
+      return;
+    }
+
+    tbody.innerHTML = data.rows.map((r) => `
+      <tr>
+        <td class="n2-sticky" title="${escapeHtml(r.comentario)}">${escapeHtml(r.comentario)}</td>
+        ${months.map((m) => {
+          const v = r.months[m] || 0;
+          return `<td class="num ${Math.abs(v) < 0.005 ? 'n2-zero' : ''}">${Math.abs(v) < 0.005 ? '' : Engine.formatK(v)}</td>`;
+        }).join('')}
+        <td class="num"><strong>${Engine.formatK(r.total)}</strong></td>
+      </tr>
+    `).join('');
+
+    if (tfoot) {
+      tfoot.innerHTML = `<tr>
+        <th class="n2-sticky">Total Geral</th>
+        ${months.map((m) => `<th class="num">${Engine.formatK(data.totals?.[m] || 0)}</th>`).join('')}
+        <th class="num">${Engine.formatK(data.grandTotal || 0)}</th>
+      </tr>`;
+    }
+
+    if (resumo) {
+      resumo.textContent = `${data.rowCount.toLocaleString('pt-BR')} comentário(s) · ${Number(data.lineCount || 0).toLocaleString('pt-BR')} linha(s) do Relatorio · Total ${Engine.formatK(data.grandTotal || 0)}`;
+    }
+    if (foot) {
+      foot.textContent = `Valores em milhares (k) · Períodos ${months.map((_, i) => i + 1).join(', ')} · Exibindo ${data.rows.length.toLocaleString('pt-BR')} linhas`;
+    }
+  }
+
   return {
     state,
     $,
@@ -2603,6 +2701,9 @@ const UI = (() => {
     renderContratos,
     openContratoDrawer,
     syncActionsComposeUi,
-    syncAdminAuthUi
+    syncAdminAuthUi,
+    readAnaliseN2Filters,
+    clearAnaliseN2Filters,
+    renderAnaliseN2
   };
 })();

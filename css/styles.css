@@ -4443,3 +4443,56 @@ main {
   }
 }
 
+
+/* Detalhe: contas clicáveis → linhas Contratos */
+.detail-conta-row {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.detail-conta-row:hover,
+.detail-conta-row:focus-visible {
+  background: var(--bayer-capri-soft);
+  outline: none;
+}
+.detail-conta-row.is-active {
+  background: rgba(1, 190, 255, 0.18);
+  box-shadow: inset 3px 0 0 var(--bayer-capri);
+}
+.detail-conta-rank {
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  width: 2rem;
+}
+.detail-conta-code {
+  display: block;
+  color: var(--bayer-blue);
+  font-size: 0.88rem;
+}
+.detail-conta-desc {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  margin-top: 0.1rem;
+}
+.detail-ksb1-drill {
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(11, 42, 74, 0.1);
+}
+.detail-ksb1-drill-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+.detail-ksb1-drill-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--bayer-blue);
+}
+.detail-ksb1-head {
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+

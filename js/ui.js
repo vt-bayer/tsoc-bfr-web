@@ -618,8 +618,8 @@ const UI = (() => {
     return null;
   }
 
-  /** Linhas do detalhe: só KSB1 (sem fallback Relatorio). */
-  function detailAccountLines(ccDetail, filters, natureza = '') {
+  /** Linhas brutas de Contratos (KSB1) para os CCs do detalhe; opcional filtro por conta. */
+  function detailAccountLines(ccDetail, filters, { natureza = '', conta = '' } = {}) {
     const ccs = new Set(detailCostCenters(ccDetail));
     const app = typeof window !== 'undefined' ? window.App : null;
     const ksb1Source = (app?.ksb1HistoryRows?.length)
@@ -632,15 +632,19 @@ const UI = (() => {
       ? new Set(mesNum != null ? [mesNum] : [])
       : new Set(mesNum != null ? Engine.MONTHS.slice(0, mesIdx + 1).map((_, i) => i + 1) : []);
 
+    const contaKey = String(conta || '').trim();
     let ksb1Rows = [];
     if (ksb1Source.length && ccs.size) {
-      ksb1Rows = ksb1Source.filter((r) => ccs.has(normCcKey(r.cc)));
+      ksb1Rows = ksb1Source.filter((r) => {
+        if (!ccs.has(normCcKey(r.cc))) return false;
+        if (contaKey && String(r.conta || '').trim() !== contaKey) return false;
+        return true;
+      });
       if (allowedMonths.size) {
         const byPeriod = ksb1Rows.filter((r) => {
           const p = parseKsb1Periodo(r.periodo);
           return p != null && allowedMonths.has(p);
         });
-        // Se o filtro de mês zerar tudo, mantém as linhas do CC (melhor que vazio)
         if (byPeriod.length) ksb1Rows = byPeriod;
       }
     }
@@ -662,7 +666,7 @@ const UI = (() => {
     if (natureza) rows = rows.filter((r) => r.natureza === natureza);
     rows.sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor));
     const total = rows.reduce((s, r) => s + r.valor, 0);
-    return { rows, naturezas, total, source: 'ksb1' };
+    return { rows, naturezas, total, source: 'ksb1', conta: contaKey };
   }
 
   function buildDetailLinesHtml(pack) {
@@ -671,7 +675,7 @@ const UI = (() => {
       : (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const slice = (pack.rows || []).slice(0, 200);
     if (!slice.length) {
-      return '<tr><td colspan="7" class="empty-state">Sem linhas de Contratos para estes centros. Envie o extrato no Admin → Atualizar app (Contratos).</td></tr>';
+      return '<tr><td colspan="7" class="empty-state">Sem linhas de Contratos para esta conta/centro. Envie o extrato no Admin → Atualizar app (Contratos).</td></tr>';
     }
     return slice.map((r) => `
       <tr>
@@ -686,14 +690,36 @@ const UI = (() => {
     `).join('');
   }
 
+  function buildRelatorioAccountsHtml(accounts) {
+    if (!(accounts || []).length) {
+      return '<tr><td colspan="6" class="empty-state">Sem contas neste recorte do Relatorio.</td></tr>';
+    }
+    return accounts.slice(0, 80).map((a, i) => `
+      <tr class="detail-conta-row" tabindex="0" role="button"
+          data-conta="${escapeHtml(a.conta || '')}"
+          data-tipo="${escapeHtml(a.tipo || '')}"
+          title="Clique para ver as linhas de Contratos desta conta">
+        <td class="detail-conta-rank">${i + 1}</td>
+        <td>
+          <strong class="detail-conta-code">${escapeHtml(a.conta || '—')}</strong>
+          <span class="detail-conta-desc">${escapeHtml(a.contaDesc || a.tipo || '')}</span>
+        </td>
+        <td>${escapeHtml(a.tipo || '—')}</td>
+        <td class="num">${Engine.formatK(a.realizado)}</td>
+        <td class="num">${Engine.formatK(a.previsto)}</td>
+        <td class="num ${diffClass(a.situacao.key)}">${Engine.formatK(a.diff, { signed: true })}</td>
+      </tr>
+    `).join('');
+  }
+
   function openDrawer(ccDetail, filters) {
     const accounts = Engine.accountImpact(ccDetail, filters);
     const series = Engine.monthlySeries(ccDetail, filters);
     const scenarioLabel = Engine.SCENARIO_LABELS[filters.scenario];
     const year = document.getElementById('label-ano')?.textContent || '2026';
-    const linesPack = detailAccountLines(ccDetail, filters, '');
     state.drawerDetail = ccDetail;
     state.drawerFilters = filters;
+    state.drawerConta = '';
 
     const situacaoTag = ccDetail.situacao.key === 'estouro'
       ? 'tag-gap'
@@ -717,17 +743,10 @@ const UI = (() => {
       `
     });
 
-    const naturezaOptions = [
-      '<option value="">Todas as naturezas</option>',
-      ...linesPack.naturezas.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`)
-    ].join('');
-    const linesHtml = buildDetailLinesHtml(linesPack);
-    const linesCountLabel = linesPack.rows.length > 200
-      ? `Exibindo 200 de ${linesPack.rows.length.toLocaleString('pt-BR')} linhas (Contratos)`
-      : `${linesPack.rows.length.toLocaleString('pt-BR')} linha(s) (Contratos)`;
-    const linesTotalLabel = typeof Ksb1 !== 'undefined' && Ksb1.formatMoney
-      ? Ksb1.formatMoney(linesPack.total)
-      : Engine.formatK(linesPack.total);
+    const accountsHtml = buildRelatorioAccountsHtml(accounts);
+    const ccsForBtn = detailCostCenters(ccDetail);
+    const ccsAttr = escapeHtml(ccsForBtn.join(','));
+    const labelAttr = escapeHtml(isSetor ? (ccDetail.setor || 'Setor') : (ccDetail.cc || ''));
 
     const monthTable = series.map((m) => {
       const noAct = !m.hasAct;
@@ -832,34 +851,58 @@ const UI = (() => {
           <div>
             <div class="dash-card-head" style="margin-bottom:0.15rem">
               <h2>Contas contábeis</h2>
-              <span class="tag tag-gap">LINHAS</span>
+              <span class="tag tag-plan">RELATORIO</span>
             </div>
-            <p class="detail-panel-sub">Linhas diretas de Contratos · filtre pela natureza do gasto</p>
+            <p class="detail-panel-sub">Clique numa conta para ver de onde veio o valor nas linhas de Contratos (KSB1).</p>
           </div>
-          <label class="field field-inline detail-natureza-filter">
-            <span>Natureza do gasto</span>
-            <select id="filtro-natureza-detail" aria-label="Filtrar natureza do gasto">
-              ${naturezaOptions}
-            </select>
-          </label>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-detail-open-contratos"
+            data-ccs="${ccsAttr}" data-label="${labelAttr}">
+            Abrir todas em Contratos
+          </button>
         </div>
         <div class="table-wrap detail-table-fill">
-          <table class="data-table data-table-compact" id="tabela-contas-detail">
+          <table class="data-table data-table-compact" id="tabela-contas-relatorio">
             <thead>
               <tr>
-                <th>Natureza</th>
+                <th>#</th>
                 <th>Conta</th>
-                <th>Centro</th>
-                <th>Fornecedor</th>
-                <th>Pedido / Doc.</th>
-                <th>Período</th>
-                <th class="num">Valor</th>
+                <th>Natureza</th>
+                <th class="num">Realizado</th>
+                <th class="num">Previsto</th>
+                <th class="num">Diferença</th>
               </tr>
             </thead>
-            <tbody id="tbody-contas-detail">${linesHtml}</tbody>
+            <tbody id="tbody-contas-relatorio">${accountsHtml}</tbody>
           </table>
         </div>
-        <p class="table-footnote" id="contas-detail-footnote">${escapeHtml(linesCountLabel)} · Total ${escapeHtml(linesTotalLabel)}</p>
+        <p class="table-footnote">Até 80 contas · Valores em milhares (k) · Clique na linha para o extrato</p>
+
+        <div class="detail-ksb1-drill" id="detail-ksb1-drill" hidden>
+          <div class="detail-ksb1-drill-head">
+            <div>
+              <h3 id="detail-ksb1-drill-title">Linhas de Contratos</h3>
+              <p class="detail-panel-sub" id="detail-ksb1-drill-sub">Extrato bruto da conta selecionada</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-detail-ksb1-tab">Abrir na aba Contratos</button>
+          </div>
+          <div class="table-wrap detail-table-fill">
+            <table class="data-table data-table-compact" id="tabela-contas-detail">
+              <thead>
+                <tr>
+                  <th>Natureza</th>
+                  <th>Conta</th>
+                  <th>Centro</th>
+                  <th>Fornecedor</th>
+                  <th>Pedido / Doc.</th>
+                  <th>Período</th>
+                  <th class="num">Valor</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-contas-detail"></tbody>
+            </table>
+          </div>
+          <p class="table-footnote" id="contas-detail-footnote"></p>
+        </div>
       </section>
     `;
 
@@ -869,24 +912,63 @@ const UI = (() => {
     const bodyEl = $('#drawer-body');
     if (bodyEl) bodyEl.scrollTop = 0;
 
-    const natSel = $('#filtro-natureza-detail');
-    if (natSel) {
-      natSel.onchange = () => {
-        const pack = detailAccountLines(state.drawerDetail, state.drawerFilters || filters, natSel.value || '');
-        const tbody = $('#tbody-contas-detail');
-        const foot = $('#contas-detail-footnote');
-        if (tbody) tbody.innerHTML = buildDetailLinesHtml(pack);
-        if (foot) {
-          const countLabel = pack.rows.length > 200
-            ? `Exibindo 200 de ${pack.rows.length.toLocaleString('pt-BR')} linhas (Contratos)`
-            : `${pack.rows.length.toLocaleString('pt-BR')} linha(s) (Contratos)`;
-          const totalLabel = typeof Ksb1 !== 'undefined' && Ksb1.formatMoney
-            ? Ksb1.formatMoney(pack.total)
-            : Engine.formatK(pack.total);
-          foot.textContent = `${countLabel} · Total ${totalLabel}`;
-        }
-      };
+    function showKsb1ForConta(conta, tipoLabel) {
+      state.drawerConta = String(conta || '');
+      const pack = detailAccountLines(state.drawerDetail, state.drawerFilters || filters, {
+        conta: state.drawerConta
+      });
+      const drill = $('#detail-ksb1-drill');
+      const tbody = $('#tbody-contas-detail');
+      const foot = $('#contas-detail-footnote');
+      const title = $('#detail-ksb1-drill-title');
+      const sub = $('#detail-ksb1-drill-sub');
+      if (drill) drill.hidden = false;
+      if (tbody) tbody.innerHTML = buildDetailLinesHtml(pack);
+      const money = typeof Ksb1 !== 'undefined' && Ksb1.formatMoney
+        ? Ksb1.formatMoney(pack.total)
+        : Engine.formatK(pack.total);
+      const countLabel = pack.rows.length > 200
+        ? `Exibindo 200 de ${pack.rows.length.toLocaleString('pt-BR')} linhas`
+        : `${pack.rows.length.toLocaleString('pt-BR')} linha(s)`;
+      if (foot) foot.textContent = `${countLabel} · Total ${money} · Conta ${state.drawerConta || '—'}`;
+      if (title) title.textContent = `Linhas de Contratos · ${state.drawerConta || 'conta'}`;
+      if (sub) {
+        sub.textContent = tipoLabel
+          ? `${tipoLabel} · extrato bruto (KSB1) filtrado por esta conta`
+          : 'Extrato bruto (KSB1) filtrado por esta conta';
+      }
+      document.querySelectorAll('.detail-conta-row').forEach((tr) => {
+        tr.classList.toggle('is-active', tr.dataset.conta === state.drawerConta);
+      });
+      drill?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
+
+    $('#tbody-contas-relatorio')?.addEventListener('click', (e) => {
+      const row = e.target.closest('.detail-conta-row');
+      if (!row) return;
+      showKsb1ForConta(row.dataset.conta, row.dataset.tipo);
+    });
+    $('#tbody-contas-relatorio')?.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const row = e.target.closest('.detail-conta-row');
+      if (!row) return;
+      e.preventDefault();
+      showKsb1ForConta(row.dataset.conta, row.dataset.tipo);
+    });
+
+    $('#btn-detail-open-contratos')?.addEventListener('click', () => {
+      const btn = $('#btn-detail-open-contratos');
+      const ccs = String(btn?.dataset.ccs || '').split(',').filter(Boolean);
+      if (typeof window.openKsb1ForDetailConta === 'function') {
+        window.openKsb1ForDetailConta('', ccs, btn?.dataset.label || '');
+      }
+    });
+    $('#btn-detail-ksb1-tab')?.addEventListener('click', () => {
+      const ccs = detailCostCenters(state.drawerDetail);
+      if (typeof window.openKsb1ForDetailConta === 'function') {
+        window.openKsb1ForDetailConta(state.drawerConta || '', ccs, state.drawerConta || '');
+      }
+    });
 
     state.chartSeries = series;
     state.chartFilters = filters;

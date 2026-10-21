@@ -84,8 +84,8 @@
     return m ? m[0] : s.replace(/[^A-Z0-9]/g, '');
   }
 
-  /** Abre a aba Contratos (KSB1) já filtrada pelos centros do detalhe. */
-  async function openKsb1ForCcs(ccs, label) {
+  /** Abre a aba Contratos já filtrada pelos centros (e opcionalmente pela conta). */
+  async function openKsb1ForCcs(ccs, label, { conta = '' } = {}) {
     const list = [...new Set((ccs || []).map(normCcKey).filter(Boolean))];
     UI.closeDrawer();
 
@@ -96,7 +96,7 @@
     const forn = document.getElementById('filtro-ksb1-fornecedor');
     const busca = document.getElementById('filtro-ksb1-busca');
     if (forn) forn.value = '';
-    if (busca) busca.value = '';
+    if (busca) busca.value = String(conta || '').trim();
     UI.state.ksb1GapStatusFilter = 'all';
 
     App.ksb1CcScope = list.length > 1 ? list : null;
@@ -126,11 +126,12 @@
       }
     }
 
-    const scoped = Ksb1.filterRows(App.ksb1Rows || [], list.length === 1
-      ? { cc: list[0] }
-      : { ccs: list });
+    const scoped = Ksb1.filterRows(App.ksb1Rows || [], {
+      ...(list.length === 1 ? { cc: list[0] } : { ccs: list }),
+      busca: String(conta || '').trim()
+    });
     const n = scoped.length;
-    const title = label || (list.length === 1 ? list[0] : `${list.length} centros`);
+    const title = [label || (list.length === 1 ? list[0] : `${list.length} centros`), conta].filter(Boolean).join(' · ');
     UI.showToast(n
       ? `Contratos · ${title} · ${n.toLocaleString('pt-BR')} linha(s)`
       : `Contratos · ${title} · sem linhas — envie o extrato no Admin`);
@@ -139,6 +140,11 @@
       document.querySelector('.contratos-lancamentos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
+
+  /** Exposto para o drawer: clicar numa conta → linhas Contratos daquela conta. */
+  window.openKsb1ForDetailConta = function openKsb1ForDetailConta(conta, ccs, label) {
+    return openKsb1ForCcs(ccs || [], label || conta, { conta: conta || '' });
+  };
 
   function openKsb1ContratoDetail(contratoKey) {
     const key = String(contratoKey || '');
@@ -1064,12 +1070,11 @@
 
   function openCc(cc, unidade, setor) {
     const detail = findCcDetail(cc, unidade, setor);
-    const code = detail?.cc || cc;
-    if (!code) {
+    if (!detail) {
       UI.showToast('Centro de custo não encontrado para os filtros atuais.');
       return;
     }
-    openKsb1ForCcs([code], code);
+    UI.openDrawer(detail, UI.readFilters());
   }
 
   function openSetor(unidade, setor) {
@@ -1091,10 +1096,7 @@
       UI.showToast('Setor não encontrado para os filtros atuais.');
       return;
     }
-    const ccs = detail.ccCodes?.length
-      ? detail.ccCodes
-      : (detail.accounts || []).map((a) => a.cc).filter(Boolean);
-    openKsb1ForCcs(ccs, setor);
+    UI.openDrawer(detail, filters);
   }
 
   function exportCsv() {

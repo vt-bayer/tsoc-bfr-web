@@ -1608,10 +1608,12 @@ const UI = (() => {
     if (screen) screen.hidden = true;
     document.body.classList.remove('account-lines-open');
     state.drawerConta = '';
-    // Volta ao detalhe do setor/CC se ainda estiver aberto
+    // Volta ao detalhe do setor/CC se estiver aberto; senão libera o app (ex.: veio da Analise N2)
     const detail = $('#detail-screen');
     if (detail && !detail.hidden) {
       document.body.classList.add('detail-open');
+    } else {
+      document.body.classList.remove('detail-open', 'drawer-open');
     }
   }
 
